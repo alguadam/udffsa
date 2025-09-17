@@ -174,6 +174,10 @@ fi
 
 print_success "pip is available"
 $PIP_CMD install --upgrade pip
+
+$PYTHON_CMD -m venv .venv
+. .venv/bin/activate
+
 # Install Python dependencies
 print_step "Installing Python dependencies from requirements.txt..."
 if ! $PIP_CMD install -r "$requirementFile" --quiet; then

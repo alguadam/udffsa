@@ -79,7 +79,7 @@ module appIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.
   }
 }
 
-module deployFabricResources './modules/deploy_fabric_resources.bicep' = {
+module deployFabricResources './modules/deploy_fabric_resources.bicep' = if (enableDeploymentScript){
   name: 'main_deploy_fabric_resourcesscript'
   scope: resourceGroup()
   params: {

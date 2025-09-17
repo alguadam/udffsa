@@ -169,9 +169,9 @@ fi
 
 # Use python3 if available, otherwise python
 PYTHON_CMD="python"
-if command_exists python3; then
-    PYTHON_CMD="python3"
-fi
+# if command_exists python3; then
+#     PYTHON_CMD="python3"
+# fi
 
 # Check Python version
 python_version=$($PYTHON_CMD --version 2>&1)

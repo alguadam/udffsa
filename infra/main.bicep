@@ -19,7 +19,7 @@ param location string = resourceGroup().location
 param enableTelemetry bool = true
 
 @description('Optional. An array of user object IDs or service principal object IDs that will be assigned the Fabric Capacity Admin role. This can be used to add additional admins beyond the default admin which is the user assigned managed identity created as part of this deployment.')
-param fabricAdminMembers array = []
+param fabricAdminMembers array = ['e791bf0e-4c05-4db6-bc80-ccfa288be2a7']
 
 @allowed([
   'F2'
@@ -37,8 +37,18 @@ param fabricAdminMembers array = []
 @description('Optional. SKU tier of the Fabric resource.')
 param skuName string = 'F2'
 
-@description('Required. Fabric Workspace ID for the deployment of the solution accelerator.')
-param fabricWorkspaceId string
+@description('Optional. Specifies the resource tags for all the resources. Tag "azd-env-name" is automatically added to all resources.')
+param tags object = {}
+
+@description('Optional created by user name')
+param createdBy string = empty(deployer().userPrincipalName) ? '' : split(deployer().userPrincipalName, '@')[0]
+
+var allTags = union(
+  {
+    'azd-env-name': solutionName
+  },
+  tags
+)
 
 var solutionSuffix = toLower(trim(replace(
   replace(
@@ -49,7 +59,20 @@ var solutionSuffix = toLower(trim(replace(
   '*',
   ''
 )))
-var baseURL='https://raw.githubusercontent.com/alguadam/udffsa/deployement-pipeline/'
+var baseURL = 'https://raw.githubusercontent.com/alguadam/udffsa/deployement-pipeline/'
+
+// ========== Resource Group Tag ========== //
+resource resourceGroupTags 'Microsoft.Resources/tags@2021-04-01' = {
+  name: 'default'
+  properties: {
+    tags: {
+      ...allTags
+      TemplateName: 'UDFF'
+      SecurityControl: 'Ignore'
+      createdBy: createdBy
+    }
+  }
+}
 
 var userAssignedIdentityResourceName = 'id-${solutionSuffix}'
 module userAssignedIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.4.1' = {
@@ -65,7 +88,7 @@ var fabricCapacityResourceName = 'fc${solutionSuffix}'
 module fabricCapacity 'br/public:avm/res/fabric/capacity:0.1.1' = {
   name: take('avm.res.fabric.capacity.${fabricCapacityResourceName}', 64)
   params: {
-    adminMembers: union([userAssignedIdentity.outputs.principalId], fabricAdminMembers)
+    adminMembers: [userAssignedIdentity.outputs.principalId]
     name: fabricCapacityResourceName
     location: location
     skuName: skuName
@@ -78,9 +101,9 @@ module deployFabricResources './modules/deploy_fabric_resources.bicep' = {
   params: {
     location: location
     identity: userAssignedIdentity.outputs.resourceId
-    scriptUri: '${baseURL}infra/deploy/fabric/provision_fabric_items.sh'
+    scriptUri: '${baseURL}infra/scripts/fabric/provision_fabric_items.sh'
     baseUrl: baseURL
-    fabricWorkspaceId: fabricWorkspaceId
+    capacityName: fabricCapacity.outputs.name
   }
 }
 

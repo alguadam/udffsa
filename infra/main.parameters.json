@@ -9,8 +9,6 @@
       "value": [
         "${AZURE_FABRIC_ADMIN}"
       ]
-    },
-    "fabricWorkspaceId": {
-      "value": "${AZURE_FABRIC_WORKSPACE_ID}"
+    }
   }
 }

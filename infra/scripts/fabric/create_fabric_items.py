@@ -6,8 +6,7 @@ import sys
 import json
 import base64
 import re
-from typing import Dict, List, Optional, Any
-# from azure.identity import AzureCliCredential
+import requests
 from fabric_api import create_fabric_client, FabricApiError
 from powerbi_api import *
 
@@ -16,6 +15,69 @@ solution_name = "Unified Data Foundation with Fabric"
 ####################
 # Helper Functions #
 ####################
+
+def build_folder_path_mapping(folders: list) -> dict:
+    """Build a mapping of full folder paths to folder IDs."""
+    folder_lookup = {f['id']: f for f in folders}
+    path_map = {}
+    
+    def build_path(folder_id: str) -> str:
+        if folder_id not in folder_lookup:
+            return ""
+        
+        folder = folder_lookup[folder_id]
+        name = folder['displayName']
+        parent_id = folder.get('parentFolderId')
+        
+        if not parent_id:
+            return name
+        
+        parent_path = build_path(parent_id)
+        return f"{parent_path}/{name}"
+    
+    for folder in folders:
+        full_path = build_path(folder['id'])
+        path_map[full_path] = folder['id']
+    
+    return path_map
+
+
+def create_fabric_directory_structure(fabric_client, workspace_id: str, folder_path: str, existing_folder_map: dict) -> str:
+    """
+    Create a complete folder hierarchy.
+    
+    Args:
+        fabric_client: Fabric API client instance
+        workspace_id: Target workspace ID
+        folder_path: Full path separated by forward slashes
+        existing_folder_map: Pre-built mapping of folder paths to IDs
+        
+    Returns:
+        Final folder ID
+    """
+    # Check if folder already exists
+    if folder_path in existing_folder_map:
+        return existing_folder_map[folder_path]
+    
+    # Split path and create recursively
+    path_parts = folder_path.split('/')
+    
+    if len(path_parts) == 1:
+        # Root folder
+        folder_id = fabric_client.create_folder(workspace_id, path_parts[0])
+        existing_folder_map[folder_path] = folder_id
+        return folder_id
+    else:
+        # Ensure parent exists
+        parent_path = '/'.join(path_parts[:-1])
+        parent_id = create_fabric_directory_structure(fabric_client, workspace_id, parent_path, existing_folder_map)
+        
+        # Create this folder
+        folder_name = path_parts[-1]
+        folder_id = fabric_client.create_folder(workspace_id, folder_name, parent_id)
+        existing_folder_map[folder_path] = folder_id
+        return folder_id
+
 
 def create_lakehouse_directory_structure(file_system_client, lakehouse_root_path: str, folder_path: str) -> None:
     """Create directory structure in a lakehouse for UDFF data organization."""
@@ -40,7 +102,18 @@ def create_lakehouse_directory_structure(file_system_client, lakehouse_root_path
             directory_client.create_directory()
             print(f"  ✅ Created directory: {os.path.basename(folder_path)}")
         except Exception as e:
-            print(f"  ❌ Error creating directory {full_path}: {str(e)}")
+            print(f"❌ ERROR: Failed to create directory {full_path}: {str(e)}")
+            print(f"   Solution: Check OneLake connectivity and permissions")
+            sys.exit(1)
+
+
+####################
+# Variables set up #
+####################
+
+workspace_default_name = "Unified Data Foundation with Fabric"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))  # Go up three levels from infra/scripts/fabric to repo root
 
 ##########################
 # Command line arguments #
@@ -48,25 +121,24 @@ def create_lakehouse_directory_structure(file_system_client, lakehouse_root_path
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description=f'Deploy {solution_name} to Microsoft Fabric')
-parser.add_argument('--workspaceId', required=True, help='Microsoft Fabric workspace ID')
+parser.add_argument('--capacityName', required=True, help='Microsoft Fabric capacity name')
+parser.add_argument('--workspaceName', required=False, help=f'Workspace name (if not provided, will use "{workspace_default_name}")')
 args = parser.parse_args()
 
 print(f"🚀 Starting {solution_name} deployment to Microsoft Fabric")
-print(f"📋 Target workspace ID: {args.workspaceId}")
+print(f"📋 Target capacity: {args.capacityName}")
+if args.workspaceName:
+    print(f"📋 Target workspace name: {args.workspaceName}")
+else:
+    print(f"📋 Will create new workspace with auto-generated name")
 print("-" * 60)
 
-####################
-# Variables set up #
-####################
-
-workspace_id = args.workspaceId
-script_dir = os.path.dirname(os.path.abspath(__file__))
-repo_root = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))  # Go up three levels from infra/deploy/fabric to repo root
+capacity_name = args.capacityName
+workspace_name = args.workspaceName
 
 # Initialize Fabric API client
 try:
-    credential = DefaultAzureCredential()
-    fabric_client = create_fabric_client(credential=credential)
+    fabric_client = create_fabric_client()
     print("✅ Authentication successful")
 except Exception as e:
     print(f"❌ ERROR: Failed to authenticate with Fabric APIs")
@@ -74,36 +146,69 @@ except Exception as e:
     print("   Solution: Please ensure you are logged in with Azure CLI: az login")
     sys.exit(1)
 
+
 #############
 # Workspace #
 #############
 # Docs: https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces
 
 try:
-    # Get workspace info using the new API client
-    workspaces = fabric_client.get_workspaces()
-    workspace = next((w for w in workspaces if w['id'] == workspace_id), None)
+    # Get capacity ID from capacity name
+    print(f"🔍 Looking up capacity: '{capacity_name}'")
+    capacities = fabric_client.get_capacities()
+    capacity = next((c for c in capacities if c['displayName'].lower() == capacity_name.lower()), None)
     
-    if not workspace:
-        print(f"❌ ERROR: Workspace '{workspace_id}' not found")
-        print("   Solution: Verify the workspace ID and ensure you have access")
+    if not capacity:
+        print(f"❌ ERROR: Capacity '{capacity_name}' not found")
+        print("   Available capacities:")
+        for cap in capacities:
+            print(f"   - {cap['displayName']} (ID: {cap['id']})")
         sys.exit(1)
     
-    workspace_name = workspace['displayName']
-    print(f"✅ Connected to workspace: '{workspace_name}'")
+    capacity_id = capacity['id']
+    print(f"✅ Found capacity: '{capacity['displayName']}' (ID: {capacity_id})")
+    print(f"   SKU: {capacity.get('sku', 'N/A')}")
+    print(f"   State: {capacity.get('state', 'N/A')}")
+    print(f"   Region: {capacity.get('region', 'N/A')}")
+    
+    # Handle workspace creation or lookup
+    # If no workspace name provided, use default name
+    if not workspace_name:
+        workspace_name = workspace_default_name
+        print(f"📋 No workspace name provided, using default: '{workspace_name}'")
+    
+    # Check if workspace with the name already exists
+    print(f"🔍 Looking for existing workspace: '{workspace_name}'")
+    workspaces = fabric_client.get_workspaces()
+    workspace = next((w for w in workspaces if w['displayName'].lower() == workspace_name.lower()), None)
+    
+    if workspace:
+        workspace_id = workspace['id']
+        print(f"✅ Found existing workspace: '{workspace_name}' (ID: {workspace_id})")
+        
+        # Assign the existing workspace to the specified capacity
+        print(f"🔄 Assigning workspace to capacity: '{capacity_name}'")
+        fabric_client.assign_workspace_to_capacity(workspace_id, capacity_id)
+        print(f"✅ Workspace assigned to capacity: '{capacity_name}'")
+    else:
+        # Create new workspace with the specified name
+        print(f"🏗️  Creating new workspace: '{workspace_name}'")
+        workspace_id = fabric_client.create_workspace(workspace_name, capacity_id)
+        print(f"✅ Created workspace: '{workspace_name}' (ID: {workspace_id})")
     
 except FabricApiError as e:
     if e.status_code == 404:
-        print(f"❌ ERROR: Workspace '{workspace_id}' not found")
-        print("   Solution: Verify the workspace ID and ensure you have access")
+        print(f"❌ ERROR: Resource not found")
     elif e.status_code == 403:
-        print(f"❌ ERROR: Access denied to workspace '{workspace_id}'")
-        print("   Solution: Ensure you have Contributor or Admin permissions")
+        print(f"❌ ERROR: Access denied")
+        print("   Solution: Ensure you have appropriate permissions")
     else:
-        print(f"❌ ERROR: Failed to access workspace: {e}")
+        print(f"❌ ERROR: Fabric API error")
+    print(f"   Status Code: {e.status_code}")
+    print(f"   Details: {str(e)}")
     sys.exit(1)
 except Exception as e:
-    print(f"❌ ERROR: Unexpected error accessing workspace: {str(e)}")
+    print(f"❌ ERROR: Unexpected error during workspace setup: {str(e)}")
     sys.exit(1)
 
 ####################
@@ -131,11 +236,9 @@ udff_fabric_folders = [
 # Create folder structure using the new API client
 try:
     print(f"📁 Creating folder structure for '{solution_name}' solution")
-    fabric_folders = {}
     
-    # Get existing folders
-    existing_folders = fabric_client.get_folders(workspace_id)
-    fabric_folders = fabric_client._build_folder_path_mapping(existing_folders)
+    # Get existing folders and build path mapping
+    fabric_folders = build_folder_path_mapping(fabric_client.get_folders(workspace_id))
     
     # Create hierarchy of folders based on full path
     for udff_folder_path in udff_fabric_folders:
@@ -143,8 +246,7 @@ try:
             print(f"  📁 Folder '{udff_folder_path}' already exists")
         else:
             try:
-                folder_id = fabric_client.create_folder_hierarchy(workspace_id, udff_folder_path)
-                fabric_folders[udff_folder_path] = folder_id
+                folder_id = create_fabric_directory_structure(fabric_client, workspace_id, udff_folder_path, fabric_folders)
                 print(f"  ✅ Created folder '{udff_folder_path}'")
             except Exception as e:
                 print(f"❌ ERROR: Failed to create folder '{udff_folder_path}': {str(e)}")
@@ -177,39 +279,43 @@ fabric_lakehouses = {}
 # Get existing lakehouses and create new ones
 print(f"🏠 Setting up lakehouses (Bronze, Silver, Gold)")
 try:
-    # Get existing lakehouses
-    lakehouses = fabric_client.get_items(workspace_id, item_type="Lakehouse")
-    for lakehouse in lakehouses:
+    # Get existing lakehouses using the new API client methods
+    print(f"  📋 Checking for existing lakehouses in workspace...")
+    existing_lakehouses = fabric_client.get_lakehouses(workspace_id)
+    
+    # Build mapping of existing lakehouses by name
+    for lakehouse in existing_lakehouses:
         fabric_lakehouses[lakehouse['displayName']] = lakehouse
+    
+    print(f"  📊 Found {len(existing_lakehouses)} existing lakehouse(s)")
 
     # Create UDFF lakehouses
     for lakehouse_name in udff_lakehouses:
         if lakehouse_name in fabric_lakehouses:
             print(f"  🏠 Lakehouse '{lakehouse_name}' already exists")
         else:
-            print(f"  🏗️ Creating lakehouse '{lakehouse_name}'")
-            lakehouse_data = {
-                "displayName": lakehouse_name,
-                "type": "Lakehouse",
-                "creationPayload": {
-                    "enableSchemas": True
-                }
-            }
-            if lakehouse_folder_id:
-                lakehouse_data["folderId"] = lakehouse_folder_id
-            
+            print(f"  🏗️ Creating lakehouse '{lakehouse_name}'...")
             try:
-                # Use the API client's internal _make_request method for lakehouse creation
-                response = fabric_client._make_request(f"workspaces/{workspace_id}/lakehouses", method="POST", data=lakehouse_data)
+                # Use the new create_lakehouse method
+                lakehouse = fabric_client.create_lakehouse(
+                    workspace_id=workspace_id,
+                    display_name=lakehouse_name,
+                    description=f"UDFF {lakehouse_name.split('_')[-1].title()} layer lakehouse for data processing",
+                    folder_id=lakehouse_folder_id,
+                    enable_schemas=True,
+                    wait_for_lro=True
+                )
                 
-                if response.status_code == 201:
-                    print(f"  ✅ Lakehouse '{lakehouse_name}' created successfully")
-                    fabric_lakehouses[lakehouse_name] = response.json()
-                else:
-                    print(f"❌ ERROR: Unexpected response creating lakehouse '{lakehouse_name}'")
-                    sys.exit(1)
+                print(f"  ✅ Lakehouse '{lakehouse_name}' created successfully")
+                fabric_lakehouses[lakehouse_name] = fabric_client.get_lakehouse(workspace_id=workspace_id, lakehouse_id=lakehouse['id'])
+                
+            except FabricApiError as e:
+                print(f"❌ ERROR: Failed to create lakehouse '{lakehouse_name}': {e}")
+                print(f"   Solution: Check workspace permissions and quotas")
+                sys.exit(1)
             except Exception as e:
-                print(f"❌ ERROR: Failed to create lakehouse '{lakehouse_name}': {str(e)}")
+                print(f"❌ ERROR: Unexpected error creating lakehouse '{lakehouse_name}': {str(e)}")
+                print(f"   Solution: Verify workspace configuration and try again")
                 sys.exit(1)
 
 except FabricApiError as e:
@@ -363,8 +469,9 @@ try:
     try:
         existing_notebooks = fabric_client.get_notebooks(workspace_id)
     except Exception as e:
-        print(f"  ⚠️ Failed to get existing notebooks: {str(e)}")
-        existing_notebooks = {}
+        print(f"❌ ERROR: Failed to get existing notebooks: {str(e)}")
+        print("   Solution: Check workspace permissions and connectivity")
+        sys.exit(1)
     
     fabric_notebooks = {}
     upload_jobs = []  # Track LRO jobs for batch monitoring
@@ -379,8 +486,9 @@ try:
         folder_id = fabric_folders.get(folder_path)
         
         if not folder_id:
-            print(f"  ❌ Folder not found for path '{folder_path}', skipping '{notebook_name}'")
-            continue
+            print(f"❌ ERROR: Folder not found for path '{folder_path}', cannot deploy '{notebook_name}'")
+            print(f"   Solution: Ensure folder structure was created successfully")
+            sys.exit(1)
         
         # Get lakehouse objects
         target_lakehouse = fabric_lakehouses.get(target_lakehouse_name) if target_lakehouse_name else None
@@ -464,10 +572,13 @@ try:
             elif response.ok:
                 fabric_notebooks[notebook_name] = response.json().get('id', 'unknown')
             else:
-                print(f"  ❌ Failed to upload '{notebook_name}': {response.text}")
+                print(f"❌ ERROR: Failed to upload '{notebook_name}': {response.text}")
+                sys.exit(1)
                 
         except Exception as e:
-            print(f"  ❌ Error uploading '{notebook_name}': {str(e)}")
+            print(f"❌ ERROR: Error uploading '{notebook_name}': {str(e)}")
+            print(f"   Solution: Check notebook file integrity and workspace permissions")
+            sys.exit(1)
     
     # Check jobs completion
     if upload_jobs:
@@ -495,9 +606,13 @@ try:
                         jobs_to_remove.append(job)
                         
                 except Exception as e:
-                    # Other errors, continue monitoring unless timeout
+                    # Critical errors during job monitoring should fail the deployment
                     if time.time() - job['start_time'] > max_wait_time:
-                        print(f"    ⚠️ Upload job for '{job['notebook_name']}' failed: {str(e)}")
+                        print(f"❌ ERROR: Upload job for '{job['notebook_name']}' failed: {str(e)}")
+                        print(f"   Solution: Check workspace performance and retry deployment")
+                        sys.exit(1)
+                    else:
+                        print(f"    ⚠️ Monitoring error for '{job['notebook_name']}': {str(e)}")
                         jobs_to_remove.append(job)
             
             for job in jobs_to_remove:
@@ -510,8 +625,10 @@ try:
     try:
         final_notebooks = fabric_client.get_notebooks(workspace_id)
         fabric_notebooks.update(final_notebooks)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"❌ ERROR: Failed to refresh notebooks list: {str(e)}")
+        print(f"   Solution: Check workspace connectivity and permissions")
+        sys.exit(1)
     
     uploaded_count = len([spec for spec in notebook_specs if os.path.basename(spec['path']).replace('.ipynb', '') in fabric_notebooks])
     print(f"✅ Successfully deployed {uploaded_count}/{len(notebook_specs)} notebooks")
@@ -569,7 +686,6 @@ for notebook_name in notebooks_to_run:
     # Add delay between notebook executions (except for last one)
     if notebook_name != notebooks_to_run[-1]:
         print(f"    📋 Completed '{notebook_name}', proceeding to next notebook...")
-        time.sleep(2)
 
 # Final results summary
 print(f"\n📊 Execution Summary:")
@@ -588,7 +704,6 @@ if failed_executions:
     sys.exit(1)
 else:
     print(f"✅ All {len(successful_executions)} pipelines executed successfully in sequence")
-
 
 ###################
 # PowerBI Reports #
@@ -634,10 +749,50 @@ for pbix_file_path in pbix_file_paths:
         report_id = new_report.get('id', 'Unknown')
         deployed_reports.append({'name': report_name, 'id': report_id})  # Track deployed report
         print(f"  ✅ Successfully deployed report '{report_name}' (ID: {report_id})")
+        
+        # Get connection details from Gold lakehouse and configure dataset parameters
+        print(f"  🔧 Configuring dataset parameters for '{report_name}'...")
+        dataset = powerbi_client.get_powerbi_dataset(workspace_id=workspace_id, dataset_name=report_name)
+        
+        # Get Gold lakehouse details and check SQL endpoint status
+        try:
+            gold_lakehouse = fabric_client.get_lakehouse(workspace_id=workspace_id, lakehouse_id=fabric_lakehouses[udff_lakehouse_gold_name]['id'])
+            sql_endpoint_provisioning_status = gold_lakehouse['properties']['sqlEndpointProperties']['provisioningStatus']
+            print(f"    📋 SQL endpoint status: {sql_endpoint_provisioning_status}")
+            
+            if sql_endpoint_provisioning_status == 'Success':
+                # SQL endpoint is ready - proceed with dataset parameter updates
+                sql_endpoint = gold_lakehouse['properties']['sqlEndpointProperties']['connectionString']
+                database_name = udff_lakehouse_gold_name
+                
+                print(f"    📋 Updating dataset parameters:")
+                print(f"      • SQL Endpoint: {sql_endpoint}")
+                print(f"      • Database: {database_name}")
+                
+                powerbi_client.update_powerbi_dataset_parameters(dataset_id=dataset['id'], parameters=[
+                    {"name": "sqlEndpoint", "newValue": sql_endpoint},
+                    {"name": "database", "newValue": database_name}
+                ])
+                print(f"  ✅ Dataset parameters updated successfully for '{report_name}'")
+            else:
+                # Handle non-success status
+                print(f"  ❌ ERROR: SQL endpoint not ready (status: {sql_endpoint_provisioning_status})")
+                print(f"     Manual intervention required: Wait for SQL endpoint provisioning to complete and re-run script")
+                sys.exit(1)
+                
+        except Exception as e:
+            print(f"❌ ERROR: Failed to configure dataset parameters for '{report_name}': {str(e)}")
+            print(f"   Solution: Check lakehouse availability and Power BI permissions")
+            sys.exit(1)
     except Exception as e:
         print(f"❌ ERROR: Failed to deploy report '{report_name}': {str(e)}")
         print(f"   Solution: Verify the .pbix file is valid and you have upload permissions")
         sys.exit(1)
+
+
+##################
+# End of program #
+##################
 
 print("-" * 60)
 print(f"🎉 {solution_name} deployment completed successfully!")

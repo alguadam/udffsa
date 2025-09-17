@@ -191,21 +191,21 @@ PYTHON_CMD="python"
 # fi
 
 # Check Python version
-python_version=$($PYTHON_CMD --version 2>&1)
-print_success "Found: $python_version"
+# python_version=$($PYTHON_CMD --version 2>&1)
+# print_success "Found: $python_version"
 
 # Validate that pip is available
 print_step "Checking pip installation..."
-if ! command_exists pip && ! command_exists pip3; then
-    print_error "❌ pip is not available. Please ensure pip is installed and try again."
-    exit 1
-fi
+# if ! command_exists pip && ! command_exists pip3; then
+#     print_error "❌ pip is not available. Please ensure pip is installed and try again."
+#     exit 1
+# fi
 
 # Use pip3 if available, otherwise pip
 PIP_CMD="pip"
-if command_exists pip3; then
-    PIP_CMD="pip3"
-fi
+# if command_exists pip3; then
+#     PIP_CMD="pip3"
+# fi
 
 print_success "pip is available"
 

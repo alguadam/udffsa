@@ -65,7 +65,8 @@ repo_root = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))  # Go 
 
 # Initialize Fabric API client
 try:
-    fabric_client = create_fabric_client()
+    credential = DefaultAzureCredential()
+    fabric_client = create_fabric_client(credential=credential)
     print("✅ Authentication successful")
 except Exception as e:
     print(f"❌ ERROR: Failed to authenticate with Fabric APIs")

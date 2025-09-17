@@ -37,6 +37,9 @@ param fabricAdminMembers array = []
 @description('Optional. SKU tier of the Fabric resource.')
 param skuName string = 'F2'
 
+@description('Required. Fabric Workspace ID for the deployment of the solution accelerator.')
+param fabricWorkspaceId string
+
 var solutionSuffix = toLower(trim(replace(
   replace(
     replace(replace(replace(replace('${solutionName}${solutionUniqueText}', '-', ''), '_', ''), '.', ''), '/', ''),
@@ -46,6 +49,7 @@ var solutionSuffix = toLower(trim(replace(
   '*',
   ''
 )))
+var baseURL='https://raw.githubusercontent.com/alguadam/udffsa/deployement-pipeline/'
 
 var userAssignedIdentityResourceName = 'id-${solutionSuffix}'
 module userAssignedIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.4.1' = {
@@ -65,6 +69,18 @@ module fabricCapacity 'br/public:avm/res/fabric/capacity:0.1.1' = {
     name: fabricCapacityResourceName
     location: location
     skuName: skuName
+  }
+}
+
+module deployFabricResources './modules/deploy_fabric_resources.bicep' = {
+  name: 'main_deploy_fabric_resourcesscript'
+  scope: resourceGroup()
+  params: {
+    location: location
+    identity: userAssignedIdentity.outputs.resourceId
+    scriptUri: '${baseURL}infra/deploy/fabric/provision_fabric_items.sh'
+    baseUrl: baseURL
+    fabricWorkspaceId: fabricWorkspaceId
   }
 }
 

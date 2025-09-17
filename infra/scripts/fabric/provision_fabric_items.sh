@@ -123,6 +123,19 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Variables
+baseUrl="$3"
+requirementFile="requirements.txt"
+requirementFileUrl=${baseUrl}"infra/deploy/fabric/requirements.txt"
+
+echo "Downloading Python scripts..."
+curl --output "create_fabric_items.py" ${baseUrl}"infra/deploy/fabric/create_fabric_items.py"
+curl --output "fabric_api.py" ${baseUrl}"infra/deploy/fabric/fabric_api.py"
+curl --output "powerbi_api.py" ${baseUrl}"infra/deploy/fabric/powerbi_api.py"
+
+# Download the requirement file
+curl --output "$requirementFile" "$requirementFileUrl"
+
 # Validate parameters
 if [[ -z "$fabricCapacityName" ]]; then
     # Check if environment variable exists
@@ -194,11 +207,11 @@ print_success "pip is available"
 
 # Install Python dependencies
 print_step "Installing Python dependencies from requirements.txt..."
-if [[ ! -f "$REQUIREMENTS_PATH" ]]; then
-    print_error "❌ requirements.txt not found at: $REQUIREMENTS_PATH"
+if [[ ! -f "$requirementFile" ]]; then
+    print_error "❌ requirements.txt not found at: $requirementFile"
     exit 1
 fi
-if ! $PIP_CMD install -r "$REQUIREMENTS_PATH" --quiet; then
+if ! $PIP_CMD install -r "$requirementFile" --quiet; then
     print_error "❌ Failed to install Python dependencies. Please check requirements.txt and try again."
     exit 1
 fi

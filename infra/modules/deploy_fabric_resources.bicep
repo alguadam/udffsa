@@ -56,7 +56,7 @@ resource create_fabric_resources 'Microsoft.Resources/deploymentScripts@2023-08-
     primaryScriptUri: scriptUri
     arguments: '${baseUrl} ${fabricWorkspaceId}'
     timeout: 'PT1H'
-    retentionInterval: 'PT1H'
-    cleanupPreference:'OnSuccess'
+    retentionInterval: 'P1D'  // Retain for 1 day for troubleshooting
+    cleanupPreference:'OnExpiration'  // Keep resources until retention expires
   }
 }

@@ -1,9 +1,11 @@
 # Microsoft Fabric API Python Module requirements
 # For fabric_api.py, powerbi_api.py, fabric_utils.py and related Fabric deployment scripts
 
-# Azure authentication and core libraries
+# Azure authentication and core libraries - compatible versions with Azure CLI
 azure-identity>=1.15.0
 azure-core>=1.29.0
+# Using specific msal version compatible with Azure CLI 2.52.0
+msal==1.24.0b1
 msal-extensions~=1.0.0
 
 # Azure Data Lake Storage (required by fabric_utils.py)

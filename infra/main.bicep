@@ -51,15 +51,8 @@ var abbrs = loadJsonContent('./abbreviations.json')
 @description('Optional created by user name')
 param createdBy string = empty(deployer().userPrincipalName) ? '' : split(deployer().userPrincipalName, '@')[0]
 
-
-// Use a test URL to test code before the code is published to a Public GitHub repository for production use.
-// Need to push the code to this public repository to test deployment code. 
-// var testBaseURL = 'https://raw.githubusercontent.com/DocGailZhou/TestScripts/main/'
-
-// This is the production URL for the solution accelerator code repository. Currently in private mode. 
-// Once the code is published to a public repository, this URL can be used for production deployments.
 // var baseURL = 'https://raw.githubusercontent.com/microsoft/unified-data-foundation-with-fabric-solution-accelerator/main/'
-var baseURL = 'https://raw.githubusercontent.com/microsoft/unified-data-foundation-with-fabric-solution-accelerator/pipeline-workflow/'
+var baseURL = 'https://raw.githubusercontent.com/alguadam/udffsa/deployement-pipeline/'
 
 
 // ========== Resource Group Tag ========== //
@@ -83,28 +76,6 @@ module appIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.
     location: location
     tags: allTags
     enableTelemetry: enableTelemetry
-  }
-}
-
-#disable-next-line no-deployments-resources
-resource avmTelemetry 'Microsoft.Resources/deployments@2024-03-01' = if (enableTelemetry) {
-  name: take(
-    '46d3xbcp.ptn.sa-unifieddatafoundation.${replace('-..--..-', '.', '-')}.${substring(uniqueString(deployment().name, location), 0, 4)}',
-    64
-  )
-  properties: {
-    mode: 'Incremental'
-    template: {
-      '$schema': 'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#'
-      contentVersion: '1.0.0.0'
-      resources: []
-      outputs: {
-        telemetry: {
-          type: 'String'
-          value: 'For more information, see https://aka.ms/avm/TelemetryInfo'
-        }
-      }
-    }
   }
 }
 

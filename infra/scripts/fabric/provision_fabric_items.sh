@@ -100,31 +100,34 @@ fabricCapacityName=""
 fabricWorkspaceName=""
 
 # Parse command line arguments
-# while [[ $# -gt 0 ]]; do
-#     case $1 in
-#         -c|--capacity-name)
-#             fabricCapacityName="$2"
-#             shift 2
-#             ;;
-#         -w|--workspace-name)
-#             fabricWorkspaceName="$2"
-#             shift 2
-#             ;;
-#         -h|--help)
-#             show_usage
-#             exit 0
-#             ;;
-#         *)
-#             print_error "❌ Unknown option: $1"
-#             echo ""
-#             show_usage
-#             exit 1
-#             ;;
-#     esac
-# done
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -c|--capacity-name)
+            fabricCapacityName="$2"
+            shift 2
+            ;;
+        -w|--workspace-name)
+            fabricWorkspaceName="$2"
+            shift 2
+            ;;
+        -b|--base-url)
+            baseUrl="$2"
+            shift 2
+            ;;
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        *)
+            print_error "❌ Unknown option: $1"
+            echo ""
+            show_usage
+            exit 1
+            ;;
+    esac
+done
 
 # Variables
-baseUrl="$3"
 requirementFile="requirements.txt"
 requirementFileUrl=${baseUrl}"infra/deploy/fabric/requirements.txt"
 

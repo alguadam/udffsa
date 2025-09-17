@@ -130,15 +130,15 @@ done
 
 # Variables
 requirementFile="requirements.txt"
-requirementFileUrl=${baseUrl}"infra/deploy/fabric/requirements.txt"
-wget -O "$requirementFile" "$requirementFileUrl"
+requirementFileUrl=${baseUrl}"infra/script/fabric/requirements.txt"
+
 echo "Downloading Python scripts..."
-curl --output "create_fabric_items.py" ${baseUrl}"infra/deploy/fabric/create_fabric_items.py"
-curl --output "fabric_api.py" ${baseUrl}"infra/deploy/fabric/fabric_api.py"
-curl --output "powerbi_api.py" ${baseUrl}"infra/deploy/fabric/powerbi_api.py"
+wget -O "create_fabric_items.py" ${baseUrl}"infra/script/fabric/create_fabric_items.py"
+wget -O "fabric_api.py" ${baseUrl}"infra/script/fabric/fabric_api.py"
+wget -O "powerbi_api.py" ${baseUrl}"infra/script/fabric/powerbi_api.py"
 
 # Download the requirement file
-curl --output "$requirementFile" "$requirementFileUrl"
+wget -O "$requirementFile" "$requirementFileUrl"
 
 # Validate parameters
 if [[ -z "$fabricCapacityName" ]]; then

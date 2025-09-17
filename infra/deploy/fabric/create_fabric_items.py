@@ -7,7 +7,7 @@ import json
 import base64
 import re
 from typing import Dict, List, Optional, Any
-from azure.identity import AzureCliCredential
+# from azure.identity import AzureCliCredential
 from fabric_api import create_fabric_client, FabricApiError
 from powerbi_api import *
 

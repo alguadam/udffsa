@@ -98,6 +98,7 @@ REQUIREMENTS_PATH="$SCRIPT_DIR/requirements.txt"
 # Initialize variables
 fabricCapacityName=""
 fabricWorkspaceName=""
+baseUrl=""
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do

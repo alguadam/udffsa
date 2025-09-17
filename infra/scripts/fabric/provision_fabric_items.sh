@@ -211,10 +211,10 @@ print_success "pip is available"
 
 # Install Python dependencies
 print_step "Installing Python dependencies from requirements.txt..."
-if [[ ! -f "$requirementFile" ]]; then
-    print_error "❌ requirements.txt not found at: $requirementFile"
-    exit 1
-fi
+# if [[ ! -f "$requirementFile" ]]; then
+#     print_error "❌ requirements.txt not found at: $requirementFile"
+#     exit 1
+# fi
 if ! $PIP_CMD install -r "$requirementFile" --quiet; then
     print_error "❌ Failed to install Python dependencies. Please check requirements.txt and try again."
     exit 1
@@ -222,7 +222,7 @@ fi
 print_success "Dependencies installed successfully"
 
 # Change to script directory for Python execution
-cd "$SCRIPT_DIR"
+# cd "$SCRIPT_DIR"
 
 # Run the Python deployment script
 print_step "Starting Fabric items deployment..."

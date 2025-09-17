@@ -1,10 +1,11 @@
 # Microsoft Fabric API Python Module requirements
-# Minimal set to avoid conflicts with Azure CLI environment
+# For fabric_api.py, powerbi_api.py, fabric_utils.py and related Fabric deployment scripts
 
-# Azure authentication - AzureCliCredential is already available in Azure CLI environment
-# azure-identity>=1.15.0  # Already provided by Azure CLI
+# Azure authentication and core libraries
+azure-identity>=1.15.0
+azure-core>=1.35.0
 
-# Azure Data Lake Storage (required by fabric_api.py)
+# Azure Data Lake Storage (required by fabric_utils.py)
 azure-storage-file-datalake>=12.14.0
 
 # HTTP requests

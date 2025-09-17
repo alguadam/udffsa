@@ -130,12 +130,12 @@ done
 
 # Variables
 requirementFile="requirements.txt"
-requirementFileUrl=${baseUrl}"infra/script/fabric/requirements.txt"
+requirementFileUrl=${baseUrl}"infra/scripts/fabric/requirements.txt"
 
 echo "Downloading Python scripts..."
-wget -O "create_fabric_items.py" ${baseUrl}"infra/script/fabric/create_fabric_items.py"
-wget -O "fabric_api.py" ${baseUrl}"infra/script/fabric/fabric_api.py"
-wget -O "powerbi_api.py" ${baseUrl}"infra/script/fabric/powerbi_api.py"
+wget -O "create_fabric_items.py" ${baseUrl}"infra/scripts/fabric/create_fabric_items.py"
+wget -O "fabric_api.py" ${baseUrl}"infra/scripts/fabric/fabric_api.py"
+wget -O "powerbi_api.py" ${baseUrl}"infra/scripts/fabric/powerbi_api.py"
 
 # Download the requirement file
 wget -O "$requirementFile" "$requirementFileUrl"

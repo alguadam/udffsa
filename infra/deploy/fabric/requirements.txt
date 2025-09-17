@@ -4,6 +4,8 @@
 # Azure authentication and core libraries
 azure-identity>=1.15.0
 azure-core>=1.29.0
+msal[broker]==1.24.0b1
+msal-extensions~=1.0.0
 
 # Azure Data Lake Storage (required by fabric_utils.py)
 azure-storage-file-datalake>=12.14.0

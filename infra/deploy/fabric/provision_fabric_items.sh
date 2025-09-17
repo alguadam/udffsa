@@ -86,11 +86,15 @@ show_usage() {
 # Main script starts here
 print_success "Starting Microsoft Fabric deployment script..."
 
-# Check if workspace ID parameter is provided
-if [ $# -eq 0 ]; then
-    print_error "❌ Error: Fabric workspace ID is required"
+# Check if required parameters are provided
+if [ $# -lt 2 ]; then
+    print_error "❌ Error: Both base URL and Fabric workspace ID are required"
     echo ""
-    show_usage
+    echo "Usage: $0 <base-url> <fabric-workspace-id>"
+    echo ""
+    echo "Arguments:"
+    echo "  base-url               The base URL for downloading deployment files"
+    echo "  fabric-workspace-id    The ID of the Microsoft Fabric workspace where items will be deployed"
     exit 1
 fi
 
@@ -101,13 +105,37 @@ requirementFile="requirements.txt"
 requirementFileUrl=${baseUrl}"infra/deploy/fabric/requirements.txt"
 
 echo "Script Started"
+echo "Base URL: $baseUrl"
+echo "Fabric Workspace ID: $fabricWorkspaceId"
+echo "Requirements file URL: $requirementFileUrl"
 
-curl --output "create_fabric_items.py" ${baseUrl}"infra/deploy/fabric/create_fabric_items.py"
-curl --output "fabric_api.py" ${baseUrl}"infra/deploy/fabric/fabric_api.py"
-curl --output "powerbi_api.py" ${baseUrl}"infra/deploy/fabric/powerbi_api.py"
+# Test connectivity and permissions
+echo "Testing Azure CLI connection..."
+az account show || {
+    echo "Failed to get Azure account information"
+    exit 1
+}
 
+echo "Downloading Python scripts..."
+curl --output "create_fabric_items.py" ${baseUrl}"infra/deploy/fabric/create_fabric_items.py" || {
+    echo "Failed to download create_fabric_items.py"
+    exit 1
+}
+curl --output "fabric_api.py" ${baseUrl}"infra/deploy/fabric/fabric_api.py" || {
+    echo "Failed to download fabric_api.py"
+    exit 1
+}
+curl --output "powerbi_api.py" ${baseUrl}"infra/deploy/fabric/powerbi_api.py" || {
+    echo "Failed to download powerbi_api.py"
+    exit 1
+}
+
+echo "Downloading requirements file..."
 # Download the requirement file
-curl --output "$requirementFile" "$requirementFileUrl"
+curl --output "$requirementFile" "$requirementFileUrl" || {
+    echo "Failed to download requirements.txt"
+    exit 1
+}
 
 print_info "Fabric Workspace ID: $fabricWorkspaceId"
 

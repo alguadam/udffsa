@@ -21,7 +21,7 @@
 #     - Python 3.9+ with pip
 #     - Appropriate permissions in the Fabric workspace
 #
-
+echo ">>>>>>>>>>>>>>>>>>>>starting fabric deployment script>>>>>>>>>>>>>>>>>>>>>>"
 # Set strict error handling
 set -euo pipefail
 
@@ -173,7 +173,7 @@ if command_exists pip3; then
 fi
 
 print_success "pip is available"
-
+$PIP_CMD install --upgrade pip
 # Install Python dependencies
 print_step "Installing Python dependencies from requirements.txt..."
 if ! $PIP_CMD install -r "$requirementFile" --quiet; then

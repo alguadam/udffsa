@@ -13,18 +13,3 @@ requests>=2.31.0
 
 # Date/time utilities (required by powerbi_api.py and fabric_api.py)
 python-dateutil>=2.8.2
-
-# Standard library packages (included with Python)
-# - json (built-in)
-# - base64 (built-in) 
-# - os (built-in)
-# - re (built-in)
-# - time (built-in)
-# - warnings (built-in)
-# - datetime (built-in)
-# - pathlib (built-in)
-# - typing (built-in)
-# - enum (built-in)
-# - argparse (built-in)
-# - glob (built-in)
-# - sys (built-in)

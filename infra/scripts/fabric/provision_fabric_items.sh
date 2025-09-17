@@ -38,7 +38,7 @@ if ! command -v curl >/dev/null 2>&1; then
     echo "Installing curl..."
     apt-get update && apt-get install -y curl
 fi
-
+apt-get update && apt-get install -y curl
 # Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'

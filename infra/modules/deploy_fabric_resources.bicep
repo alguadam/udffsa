@@ -4,6 +4,8 @@ param scriptUri string // Full absolute https URI the script to be run.
 param baseUrl string // Base URL for the script
 param capacityName string // Workspace ID for the Fabric resources
 param identity string // Fully qualified resource ID for the managed identity.
+param gitRepo string = 'https://github.com/alguadam/udffsa.git' // Git repository URL
+param gitBranch string = 'main' // Git branch to clone
 
 resource create_fabric_resources 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   kind:'AzureCLI'
@@ -18,7 +20,7 @@ resource create_fabric_resources 'Microsoft.Resources/deploymentScripts@2023-08-
   properties: {
     azCliVersion: '2.55.0'
     primaryScriptUri: scriptUri
-    arguments: '-b ${baseUrl} -c ${capacityName}'
+    arguments: '-b ${baseUrl} -c ${capacityName} -r ${gitRepo} -n ${gitBranch}'
     timeout: 'PT1H'
     retentionInterval: 'PT1H'  // Retain for 1 hour for troubleshooting
     cleanupPreference:'OnSuccess'  // Keep resources until retention expires

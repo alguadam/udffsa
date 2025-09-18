@@ -104,8 +104,6 @@ module deployFabricResources './modules/deploy_fabric_resources.bicep' = {
     scriptUri: '${baseURL}infra/scripts/azure/deploy-python.sh'
     baseUrl: baseURL
     capacityName: fabricCapacity.outputs.name
-    gitRepo: 'https://github.com/alguadam/udffsa.git'
-    gitBranch: 'deployement-pipeline'
   }
 }
 

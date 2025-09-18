@@ -91,6 +91,24 @@ show_usage() {
 # Main script starts here
 print_success "Starting Microsoft Fabric deployment script..."
 
+# Variables
+REPO_URL="https://github.com/alguadam/udffsa.git"
+BRANCH="deployement-pipeline"
+CLONE_DIR="udffsa"
+ 
+# Clone if not exists, else pull latest
+if [ ! -d "$CLONE_DIR/.git" ]; then
+    echo "Cloning repository..."
+    git clone --branch "$BRANCH" "$REPO_URL" "$CLONE_DIR"
+else
+    echo "Repository already exists. Fetching latest changes..."
+    cd "$CLONE_DIR"
+    git fetch origin
+    git checkout "$BRANCH"
+    git pull origin "$BRANCH"
+    cd ..
+fi
+
 # Get script directory for relative paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REQUIREMENTS_PATH="$SCRIPT_DIR/requirements.txt"

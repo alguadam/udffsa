@@ -65,8 +65,9 @@ function Invoke-PackageCommand {
     $currentUser = whoami
     
     if ($currentUser -eq "root") {
-        & $Command[0] $Command[1..($Command.Length-1)]
-    } else {
+        & $Command[0] $Command[1..($Command.Length - 1)]
+    }
+    else {
         & "sudo" @Command
     }
     
@@ -81,7 +82,8 @@ function Test-Command {
     try {
         Get-Command $CommandName -ErrorAction Stop
         return $true
-    } catch {
+    }
+    catch {
         return $false
     }
 }
@@ -96,7 +98,8 @@ try {
     if (Test-Command "git") {
         $gitVersion = git --version 2>&1
         Write-Host "Git is already installed: $gitVersion" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "Installing Git..." -ForegroundColor Yellow
         Invoke-PackageCommand @("apt-get", "install", "-y", "git") "Installing Git"
         
@@ -104,20 +107,26 @@ try {
         Write-Host "Installed Git version: $gitVersion" -ForegroundColor Green
     }
 
-    # Check and install Python 3.13
-    Write-Host "Checking Python 3.13 installation..." -ForegroundColor Yellow
-    if (Test-Command "python3.13") {
-        $pythonVersion = python3.13 --version 2>&1
-        Write-Host "Python 3.13 is already installed: $pythonVersion" -ForegroundColor Green
-    } else {
-        Write-Host "Installing Python 3.13 with pip..." -ForegroundColor Yellow
-        Invoke-PackageCommand @("apt-get", "install", "-y", "python3.13", "python3.13-pip", "python3.13-venv") "Installing Python 3.13 and pip"
-        
-        $pythonVersion = python3.13 --version 2>&1
-        $pipVersion = python3.13 -m pip --version 2>&1
-        Write-Host "Installed Python version: $pythonVersion" -ForegroundColor Green
-        Write-Host "Installed pip version: $pipVersion" -ForegroundColor Green
-    }
+    # Install Python 3.13
+    Write-Host "Installing Python 3.13..." -ForegroundColor Yellow
+    
+    # Install software-properties-common for add-apt-repository
+    Invoke-PackageCommand @("apt-get", "install", "-y", "software-properties-common") "Installing software-properties-common"
+    
+    # Add deadsnakes PPA for Python 3.13
+    Invoke-PackageCommand @("add-apt-repository", "-y", "ppa:deadsnakes/ppa") "Adding deadsnakes PPA"
+    
+    # Update package list after adding PPA
+    Invoke-PackageCommand @("apt-get", "update", "-y") "Updating package repositories after PPA addition"
+    
+    # Install Python 3.13 and related packages
+    Invoke-PackageCommand @("apt-get", "install", "-y", "python3.13", "python3.13-pip", "python3.13-venv", "python3.13-dev") "Installing Python 3.13 and pip"
+    
+    # Verify installation
+    $pythonVersion = python3.13 --version 2>&1
+    $pipVersion = python3.13 -m pip --version 2>&1
+    Write-Host "Installed Python version: $pythonVersion" -ForegroundColor Green
+    Write-Host "Installed pip version: $pipVersion" -ForegroundColor Green
 
     # Clone repository and checkout branch
     Write-Host "Cloning repository from: $GitBaseUrl" -ForegroundColor Yellow
@@ -152,7 +161,7 @@ try {
             Write-Warning "Failed to make script executable, but continuing..."
         }
 
-        # Build arguments array efficiently
+        # Build arguments array
         $ProvisionArgs = @()
         if ($FabricCapacityName) {
             $ProvisionArgs += @("--capacityName", $FabricCapacityName)
@@ -163,13 +172,17 @@ try {
             Write-Host "Using Fabric workspace name: $FabricWorkspaceName" -ForegroundColor Cyan
         }
 
-        # Execute the provision script
+        # Execute the provision script with Python 3.13
         Write-Host "Invoking provision_fabric_items.sh..." -ForegroundColor Yellow
         Write-Host "This may take several minutes to complete..." -ForegroundColor Cyan
         
+        # Set Python 3.13 environment variable for the script
+        $env:PYTHON_CMD = "python3.13"
+        
         if ($ProvisionArgs.Count -gt 0) {
             & bash ./provision_fabric_items.sh @ProvisionArgs
-        } else {
+        }
+        else {
             & bash ./provision_fabric_items.sh
         }
         
@@ -185,7 +198,8 @@ try {
             if ($FabricWorkspaceName) {
                 Write-Host "- Fabric Workspace: $FabricWorkspaceName" -ForegroundColor White
             }
-        } else {
+        }
+        else {
             throw "Provision script execution failed with exit code: $LASTEXITCODE"
         }
     }
@@ -215,7 +229,8 @@ finally {
         while (Get-Location -Stack -ErrorAction SilentlyContinue) {
             Pop-Location -ErrorAction SilentlyContinue
         }
-    } catch {
+    }
+    catch {
         # If Pop-Location fails, just continue
     }
     
@@ -224,7 +239,8 @@ finally {
         try {
             Remove-Item -Path "repo" -Recurse -Force -ErrorAction Stop
             Write-Host "Repository cleanup completed" -ForegroundColor Green
-        } catch {
+        }
+        catch {
             Write-Warning "Failed to clean up repository: $($_.Exception.Message)"
         }
     }

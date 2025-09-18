@@ -91,52 +91,13 @@ show_usage() {
 # Main script starts here
 print_success "Starting Microsoft Fabric deployment script..."
 
-# Install git if not available
-print_step "Checking git availability..."
-if ! command_exists git; then
-    print_warning "Git not found. Installing git..."
-    
-    # Detect OS and install git accordingly
-    if command_exists apt-get; then
-        # Ubuntu/Debian
-        apt-get update && apt-get install -y git
-    elif command_exists yum; then
-        # CentOS/RHEL
-        yum install -y git
-    elif command_exists apk; then
-        # Alpine Linux
-        apk add --no-cache git
-    else
-        print_error "❌ Unable to install git automatically. Please ensure git is available in the deployment environment."
-        exit 1
-    fi
-    print_success "Git installed successfully"
-else
-    print_success "Git is already available"
-fi
-
-# Variables
-REPO_URL="https://github.com/alguadam/udffsa.git"
-BRANCH="deployement-pipeline"
-CLONE_DIR="udffsa"
-
-# Clone repository (shallow clone for speed)
-print_step "Cloning repository (shallow clone for speed)..."
-if [ ! -d "$CLONE_DIR/.git" ]; then
-    git clone --depth 1 --single-branch --branch "$BRANCH" "$REPO_URL" "$CLONE_DIR" --quiet
-    print_success "Repository cloned successfully"
-else
-    print_info "Repository directory already exists"
-fi
-
-# Set up paths relative to the cloned repository
-SCRIPT_DIR="$CLONE_DIR/infra/scripts/fabric"
+# Get script directory for relative paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REQUIREMENTS_PATH="$SCRIPT_DIR/requirements.txt"
 
 # Initialize variables
 fabricCapacityName=""
 fabricWorkspaceName=""
-baseUrl=""
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -147,10 +108,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         -w|--workspace-name)
             fabricWorkspaceName="$2"
-            shift 2
-            ;;
-        -b|--base-url)
-            baseUrl="$2"
             shift 2
             ;;
         -h|--help)
@@ -174,6 +131,15 @@ if [[ -z "$fabricCapacityName" ]]; then
         print_info "Using Fabric capacity name from environment variable: $fabricCapacityName"
     else
         print_error "❌ Error: Capacity name is required"
+        echo ""
+        print_info "Please provide the capacity name either:"
+        echo -e "${WHITE}1. As a parameter: -c 'MyCapacity'${NC}"
+        echo -e "${WHITE}2. Set the AZURE_FABRIC_CAPACITY_NAME environment variable${NC}"
+        echo ""
+        print_info "Usage examples:"
+        echo -e "${WHITE}  $0 -c 'MyCapacity' -w 'MyWorkspace'${NC}"
+        echo -e "${WHITE}  $0 -c 'MyCapacity'${NC}"
+        echo -e "${WHITE}  export AZURE_FABRIC_CAPACITY_NAME='MyCapacity' && $0${NC}"
         exit 1
     fi
 fi
@@ -197,55 +163,54 @@ fi
 # Validate that Python is available
 print_step "Checking Python installation..."
 if ! command_exists python && ! command_exists python3; then
-    print_error "❌ Python is not installed or not available in PATH."
+    print_error "❌ Python is not installed or not available in PATH. Please install Python 3.9+ and try again."
     exit 1
 fi
 
-PYTHON_CMD="python3"
-if ! command_exists python3; then
-    PYTHON_CMD="python"
+# Use python3 if available, otherwise python
+PYTHON_CMD="python"
+if command_exists python3; then
+    PYTHON_CMD="python3"
 fi
 
+# Check Python version
 python_version=$($PYTHON_CMD --version 2>&1)
 print_success "Found: $python_version"
 
 # Validate that pip is available
 print_step "Checking pip installation..."
-PIP_CMD="pip3"
-if ! command_exists pip3; then
-    PIP_CMD="pip"
+if ! command_exists pip && ! command_exists pip3; then
+    print_error "❌ pip is not available. Please ensure pip is installed and try again."
+    exit 1
 fi
 
-if ! command_exists "$PIP_CMD"; then
-    print_error "❌ pip is not available."
-    exit 1
+# Use pip3 if available, otherwise pip
+PIP_CMD="pip"
+if command_exists pip3; then
+    PIP_CMD="pip3"
 fi
 
 print_success "pip is available"
 
-# Verify required files exist
-print_step "Verifying required files..."
+# Install Python dependencies
+print_step "Installing Python dependencies from requirements.txt..."
 if [[ ! -f "$REQUIREMENTS_PATH" ]]; then
     print_error "❌ requirements.txt not found at: $REQUIREMENTS_PATH"
     exit 1
 fi
-
-print_success "All required files found"
-
-# Install Python dependencies
-print_step "Installing Python dependencies..."
 if ! $PIP_CMD install -r "$REQUIREMENTS_PATH" --quiet; then
-    print_error "❌ Failed to install Python dependencies."
+    print_error "❌ Failed to install Python dependencies. Please check requirements.txt and try again."
     exit 1
 fi
 print_success "Dependencies installed successfully"
 
-# Change to the cloned repository directory
+# Change to script directory for Python execution
 cd "$SCRIPT_DIR"
 
 # Run the Python deployment script
 print_step "Starting Fabric items deployment..."
-print_info "Working from directory: $(pwd)"
+print_info "This may take several minutes to complete..."
+echo ""
 
 # Build command arguments
 python_args=(--capacityName "$fabricCapacityName")
@@ -253,12 +218,27 @@ if [[ -n "$fabricWorkspaceName" ]]; then
     python_args+=(--workspaceName "$fabricWorkspaceName")
 fi
 
-# Run Python script from the correct location
+# Run Python unbuffered so prints show immediately
 if $PYTHON_CMD -u create_fabric_items.py "${python_args[@]}"; then
     echo ""
     print_success "✅ Fabric deployment completed successfully!"
+    echo ""
+    print_info "Next steps:"
+    echo -e "${WHITE}1. Open your Microsoft Fabric workspace${NC}"
+    echo -e "${WHITE}2. Verify that lakehouses (maag_bronze, maag_silver, maag_gold) have been created${NC}"
+    echo -e "${WHITE}3. Check that notebooks are organized in the correct folder structure${NC}"
+    echo -e "${WHITE}4. Explore the sample data in the bronze lakehouse${NC}"
+    echo -e "${WHITE}5. Review any deployed Power BI reports in the reports folder${NC}"
+    echo -e "${WHITE}6. Note the workspace ID for future deployments${NC}"
 else
     exit_code=$?
     print_error "❌ Deployment failed with exit code: $exit_code"
+    echo ""
+    print_warning "Troubleshooting tips:"
+    echo -e "${WHITE}1. Ensure you are logged in to Azure CLI: az login${NC}"
+    echo -e "${WHITE}2. Verify you have permissions in the Fabric capacity and workspace${NC}"
+    echo -e "${WHITE}3. Check that the capacity name is correct and accessible${NC}"
+    echo -e "${WHITE}4. Ensure Python 3.9+ and pip are properly installed${NC}"
+    echo -e "${WHITE}5. Check your internet connection and Fabric API access${NC}"
     exit 1
 fi

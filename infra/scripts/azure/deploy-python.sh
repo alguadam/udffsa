@@ -51,41 +51,43 @@ usage() {
 }
 
 # Default values
-GIT_REPO="https://github.com/alguadam/udffsa.git"
-BRANCH="deployement-pipeline"
+GIT_REPO=""
+BRANCH=""
 BASE_URL=""
 CAPACITY_NAME=""
 
 # Parse command line arguments
-log "Starting argument parsing..."
-while getopts "b:c:r:n:h" opt; do
-    log "Processing option: -$opt with value: $OPTARG"
-    case $opt in
-        b)
-            BASE_URL="$OPTARG"
-            log "Set BASE_URL to: $BASE_URL"
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -c)
+            CAPACITY_NAME="$2"
+            shift 2
             ;;
-        c)
-            CAPACITY_NAME="$OPTARG"
-            log "Set CAPACITY_NAME to: $CAPACITY_NAME"
+        -r)
+            GIT_REPO="$2"
+            shift 2
             ;;
-        r)
-            GIT_REPO="$OPTARG"
-            log "Set GIT_REPO to: $GIT_REPO"
+        -b)
+            BASE_URL="$2"
+            shift 2
             ;;
-        n)
-            BRANCH="$OPTARG"
-            log "Set BRANCH to: $BRANCH"
+        -n)
+            BRANCH="$2"
+            shift 2
             ;;
-        h)
-            usage
+        -h|--help)
+            show_usage
+            exit 0
             ;;
-        \?)
-            echo "Invalid option: -$OPTARG" >&2
-            usage
+        *)
+            print_error "❌ Unknown option: $1"
+            echo ""
+            show_usage
+            exit 1
             ;;
     esac
 done
+
 log "Completed argument parsing"
 
 log "Final parameter values:"

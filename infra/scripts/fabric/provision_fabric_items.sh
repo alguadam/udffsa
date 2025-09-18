@@ -91,6 +91,31 @@ show_usage() {
 # Main script starts here
 print_success "Starting Microsoft Fabric deployment script..."
 
+# Install git if not available
+print_step "Checking git availability..."
+if ! command_exists git; then
+    print_warning "Git not found. Installing git..."
+    
+    # Detect OS and install git accordingly
+    if command_exists apt-get; then
+        # Ubuntu/Debian
+        apt-get update && apt-get install -y git
+    elif command_exists yum; then
+        # CentOS/RHEL
+        yum install -y git
+    elif command_exists apk; then
+        # Alpine Linux
+        apk add --no-cache git
+    else
+        print_error "❌ Unable to install git automatically. Please ensure git is available in the deployment environment."
+        exit 1
+    fi
+    
+    print_success "Git installed successfully"
+else
+    print_success "Git is already available"
+fi
+
 # Variables
 REPO_URL="https://github.com/alguadam/udffsa.git"
 BRANCH="deployement-pipeline"

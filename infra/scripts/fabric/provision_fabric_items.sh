@@ -137,8 +137,7 @@ fi
 
 # Get script directory for relative paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-echo "SCRIPT_DIR: $SCRIPT_DIR"
-REQUIREMENTS_PATH="$SCRIPT_DIR/requirements.txt"
+REQUIREMENTS_PATH="$SCRIPT_DIR/infra/scripts/fabric/requirements.txt"
 
 # Initialize variables
 fabricCapacityName=""

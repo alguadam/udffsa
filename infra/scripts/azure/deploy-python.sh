@@ -267,19 +267,45 @@ if [[ $? -ne 0 ]]; then
 fi
 
 log "Repository download completed successfully"
-log "Current directory contents:"
+log "Current directory contents after extraction:"
 ls -la
+log "Directory structure after extraction (first 50 entries):"
+find . -type d 2>/dev/null | head -50
+log "Files in root directory:"
+find . -maxdepth 1 -type f 2>/dev/null
+log "Looking for fabric directories anywhere in the extracted content:"
+find . -name "*fabric*" -type d 2>/dev/null || log "No fabric-related directories found"
 
-# Navigate to the fabric scripts directory
-FABRIC_SCRIPTS_PATH="./infra/scripts/fabric"
-log "Looking for fabric scripts directory: $FABRIC_SCRIPTS_PATH"
+# Navigate to the fabric scripts directory - try multiple possible locations
+FABRIC_SCRIPTS_PATH=""
+POSSIBLE_PATHS=(
+    "./infra/scripts/fabric"
+    "./scripts/fabric"
+    "./fabric"
+    "$(find . -name "fabric" -type d -path "*/scripts/*" | head -1)"
+    "$(find . -name "fabric" -type d | head -1)"
+)
 
-if [[ ! -d "$FABRIC_SCRIPTS_PATH" ]]; then
-    log "Error: Fabric scripts directory not found at: $FABRIC_SCRIPTS_PATH"
+log "Looking for fabric scripts directory..."
+log "Available directories in current location:"
+find . -type d -maxdepth 4 2>/dev/null | head -30
+
+for path in "${POSSIBLE_PATHS[@]}"; do
+    if [[ -n "$path" && -d "$path" ]]; then
+        FABRIC_SCRIPTS_PATH="$path"
+        log "Found fabric scripts directory at: $FABRIC_SCRIPTS_PATH"
+        break
+    else
+        log "Checked path: $path - not found"
+    fi
+done
+
+if [[ -z "$FABRIC_SCRIPTS_PATH" ]]; then
+    log "Error: Fabric scripts directory not found in any expected location"
     log "Available directories:"
     find . -name "fabric" -type d 2>/dev/null || log "No 'fabric' directories found"
     log "Current directory structure:"
-    find . -type d -maxdepth 3 2>/dev/null | head -20
+    find . -type d -maxdepth 4 2>/dev/null | head -30
     log "All contents in current directory:"
     ls -la
     error_exit "Fabric scripts directory not found"

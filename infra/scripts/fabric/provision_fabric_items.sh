@@ -252,7 +252,8 @@ python_args=(--capacityName "$fabricCapacityName")
 if [[ -n "$fabricWorkspaceName" ]]; then
     python_args+=(--workspaceName "$fabricWorkspaceName")
 fi
-
+echo "Running Python script with arguments: ${python_args[@]}"
+exit 1
 # Run Python script from the correct location
 if $PYTHON_CMD -u create_fabric_items.py "${python_args[@]}"; then
     echo ""

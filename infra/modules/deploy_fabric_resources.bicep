@@ -20,7 +20,7 @@ resource create_fabric_resources 'Microsoft.Resources/deploymentScripts@2023-08-
   properties: {
     azCliVersion: '2.55.0'
     primaryScriptUri: scriptUri
-    arguments: '-b ${baseUrl} -c ${capacityName} -r ${gitRepo} -n ${gitBranch}'
+    arguments: format('-b {0} -c {1} -r {2} -n {3}', baseUrl, capacityName, gitRepo, gitBranch)
     timeout: 'PT1H'
     retentionInterval: 'PT1H'  // Retain for 1 hour for troubleshooting
     cleanupPreference:'OnSuccess'  // Keep resources until retention expires

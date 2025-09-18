@@ -41,7 +41,7 @@ done
 log "=== END ARGUMENTS DEBUG ==="
 
 # Function to display usage
-usage() {
+show_usage() {
     log "Usage: $0 -b <base_url> -c <capacity_name> [-r <git_repo>] [-n <branch>]"
     log "  -b: Base URL for the deployment"
     log "  -c: Capacity name for Fabric resources"
@@ -51,27 +51,34 @@ usage() {
 }
 
 # Default values
-GIT_REPO=""
-BRANCH=""
+GIT_REPO="https://github.com/alguadam/udffsa.git"
+BRANCH="main"
 BASE_URL=""
 CAPACITY_NAME=""
 
 # Parse command line arguments
+log "🔍 Starting argument parsing with $# arguments"
+log "🔍 Arguments: $*"
 while [[ $# -gt 0 ]]; do
+    log "🔍 Processing: $1 (remaining: $#)"
     case $1 in
         -c)
+            log "🔍 Found -c flag, setting CAPACITY_NAME to: $2"
             CAPACITY_NAME="$2"
             shift 2
             ;;
         -r)
+            log "🔍 Found -r flag, setting GIT_REPO to: $2"
             GIT_REPO="$2"
             shift 2
             ;;
         -n)
+            log "🔍 Found -n flag, setting BRANCH to: $2"
             BRANCH="$2"
             shift 2
             ;;
         -b)
+            log "🔍 Found -b flag, setting BASE_URL to: $2"
             BASE_URL="$2"
             shift 2
             ;;

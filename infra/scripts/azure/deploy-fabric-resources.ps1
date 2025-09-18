@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     This script is designed to run in an Azure Deployment Script (Azure PowerShell kind) on Ubuntu 24.04.
-    It clones the specified repository, checks out the target branch, installs Python 3.13 with pip,
+    It clones the specified repository, checks out the target branch, installs Python 3 with pip,
     and invokes the provision_fabric_items.sh script to deploy Fabric resources.
 
 .PARAMETER GitBaseUrl
@@ -30,7 +30,7 @@
     - Managed identity with appropriate permissions
     - Internet access for git operations
     - Ubuntu 24.04 with apt package manager
-    - Python 3.13 with pip for Fabric API operations
+    - Python 3 with pip for Fabric API operations
 #>
 
 param(
@@ -155,11 +155,11 @@ try {
         # Build arguments array
         $ProvisionArgs = @()
         if ($FabricCapacityName) {
-            $ProvisionArgs += @("--capacityName", $FabricCapacityName)
+            $ProvisionArgs += @("-c", $FabricCapacityName)
             Write-Host "Using Fabric capacity name: $FabricCapacityName" -ForegroundColor Cyan
         }
         if ($FabricWorkspaceName) {
-            $ProvisionArgs += @("--workspaceName", $FabricWorkspaceName)
+            $ProvisionArgs += @("-w", $FabricWorkspaceName)
             Write-Host "Using Fabric workspace name: $FabricWorkspaceName" -ForegroundColor Cyan
         }
 

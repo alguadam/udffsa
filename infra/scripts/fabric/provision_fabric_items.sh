@@ -133,7 +133,7 @@ fi
 # SCRIPT_DIR="$CLONE_DIR/infra/scripts/fabric"
 REQUIREMENTS_PATH="$CLONE_DIR/infra/scripts/fabric/requirements.txt"
 
-print_info "Working directory: $WORK_DIR"
+# print_info "Working directory: $WORK_DIR"
 # print_info "Script directory: $SCRIPT_DIR"
 print_info "Requirements path: $REQUIREMENTS_PATH"
 
@@ -256,7 +256,7 @@ python_args=(--capacityName "$fabricCapacityName")
 if [[ -n "$fabricWorkspaceName" ]]; then
     python_args+=(--workspaceName "$fabricWorkspaceName")
 fi
-exit 1
+
 # Run Python script from the correct location
 if $PYTHON_CMD -u infra/scripts/fabric/create_fabric_items.py "${python_args[@]}"; then
     echo ""

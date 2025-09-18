@@ -16,7 +16,7 @@ resource create_fabric_resources 'Microsoft.Resources/deploymentScripts@2023-08-
     }
   }
   properties: {
-    azCliVersion: '2.65.0'
+    azCliVersion: '2.52.0'
     primaryScriptUri: scriptUri
     arguments: '-b ${baseUrl} -c ${capacityName}'
     timeout: 'PT1H'

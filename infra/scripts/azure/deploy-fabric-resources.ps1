@@ -119,8 +119,24 @@ try {
     # Update package list after adding PPA
     Invoke-PackageCommand @("apt-get", "update", "-y") "Updating package repositories after PPA addition"
     
-    # Install Python 3.13 and related packages
-    Invoke-PackageCommand @("apt-get", "install", "-y", "python3.13", "python3.13-pip", "python3.13-venv", "python3.13-dev") "Installing Python 3.13 and pip"
+    # Install Python 3.13 and related packages (pip may not be available directly for 3.13)
+    Invoke-PackageCommand @("apt-get", "install", "-y", "python3.13", "python3.13-venv", "python3.13-dev", "python3.13-distutils") "Installing Python 3.13 and essential packages"
+    
+    # Install pip for Python 3.13 using get-pip.py if python3.13-pip is not available
+    Write-Host "Setting up pip for Python 3.13..." -ForegroundColor Yellow
+    try {
+        # Try to install python3.13-pip first
+        Invoke-PackageCommand @("apt-get", "install", "-y", "python3.13-pip") "Installing python3.13-pip package"
+    }
+    catch {
+        Write-Host "python3.13-pip not available, installing pip manually..." -ForegroundColor Yellow
+        
+        # Download and install pip manually
+        curl -sS https://bootstrap.pypa.io/get-pip.py | python3.13
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to install pip for Python 3.13"
+        }
+    }
     
     # Verify installation
     $pythonVersion = python3.13 --version 2>&1

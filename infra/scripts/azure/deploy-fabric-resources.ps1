@@ -4,8 +4,8 @@
 
 .DESCRIPTION
     This script is designed to run in an Azure Deployment Script (Azure PowerShell kind) on Ubuntu 24.04.
-    It clones the specified repository, checks out the target branch, and invokes the 
-    provision_fabric_items.ps1 script to deploy Fabric resources.
+    It clones the specified repository, checks out the target branch, installs Python 3.13 with pip,
+    and invokes the provision_fabric_items.sh script to deploy Fabric resources.
 
 .PARAMETER GitBaseUrl
     The base URL of the git repository to clone (e.g., 'https://github.com/alguadam/udffsa.git')
@@ -30,6 +30,7 @@
     - Managed identity with appropriate permissions
     - Internet access for git operations
     - Ubuntu 24.04 with apt package manager
+    - Python 3.13 with pip for Fabric API operations
 #>
 
 param(
@@ -53,132 +54,144 @@ Write-Host "Starting Azure Deployment Script for Fabric resources..." -Foregroun
 Write-Host "Git Base URL: $GitBaseUrl" -ForegroundColor Cyan
 Write-Host "Branch Name: $BranchName" -ForegroundColor Cyan
 
-try {
-    # Check if Git is installed, install if not present
-    Write-Host "Checking Git installation..." -ForegroundColor Yellow
-    try {
-        $gitVersion = git --version 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "Git is already installed: $gitVersion" -ForegroundColor Green
-        }
-        else {
-            throw "Git not found"
-        }
+# Helper function to run commands with privilege escalation
+function Invoke-PackageCommand {
+    param(
+        [string[]]$Command,
+        [string]$Description
+    )
+    
+    Write-Host $Description -ForegroundColor Cyan
+    $currentUser = whoami
+    
+    if ($currentUser -eq "root") {
+        & $Command[0] $Command[1..($Command.Length-1)]
+    } else {
+        & "sudo" @Command
     }
-    catch {
-        Write-Host "Git not found. Installing Git on Ubuntu 24.04..." -ForegroundColor Yellow
+    
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed: $Description"
+    }
+}
+
+# Helper function to check if a command exists
+function Test-Command {
+    param([string]$CommandName)
+    try {
+        Get-Command $CommandName -ErrorAction Stop
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+try {
+    # Update package list once at the beginning
+    Write-Host "Updating package list..." -ForegroundColor Yellow
+    Invoke-PackageCommand @("apt-get", "update", "-y") "Updating package repositories"
+
+    # Check and install Git
+    Write-Host "Checking Git installation..." -ForegroundColor Yellow
+    if (Test-Command "git") {
+        $gitVersion = git --version 2>&1
+        Write-Host "Git is already installed: $gitVersion" -ForegroundColor Green
+    } else {
+        Write-Host "Installing Git..." -ForegroundColor Yellow
+        Invoke-PackageCommand @("apt-get", "install", "-y", "git") "Installing Git"
         
-        # Check if we're running as root or have sudo access
-        $currentUser = whoami
-        Write-Host "Current user: $currentUser" -ForegroundColor Cyan
-        
-        if ($currentUser -eq "root") {
-            # Running as root, no need for sudo
-            Write-Host "Running as root, installing Git directly..." -ForegroundColor Cyan
-            
-            # Update package list
-            apt-get update -y
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to update package list"
-            }
-            
-            # Install git
-            apt-get install -y git
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to install Git using apt-get"
-            }
-        }
-        else {
-            # Try with sudo
-            Write-Host "Attempting to install Git with sudo..." -ForegroundColor Cyan
-            
-            # Update package list
-            sudo apt-get update -y
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to update package list with sudo"
-            }
-            
-            # Install git
-            sudo apt-get install -y git
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to install Git using sudo apt-get"
-            }
-        }
-        
-        # Verify installation
         $gitVersion = git --version 2>&1
         Write-Host "Installed Git version: $gitVersion" -ForegroundColor Green
     }
 
-    # Clone the repository
+    # Check and install Python 3.13
+    Write-Host "Checking Python 3.13 installation..." -ForegroundColor Yellow
+    if (Test-Command "python3.13") {
+        $pythonVersion = python3.13 --version 2>&1
+        Write-Host "Python 3.13 is already installed: $pythonVersion" -ForegroundColor Green
+    } else {
+        Write-Host "Installing Python 3.13 with pip..." -ForegroundColor Yellow
+        Invoke-PackageCommand @("apt-get", "install", "-y", "python3.13", "python3.13-pip", "python3.13-venv") "Installing Python 3.13 and pip"
+        
+        $pythonVersion = python3.13 --version 2>&1
+        $pipVersion = python3.13 -m pip --version 2>&1
+        Write-Host "Installed Python version: $pythonVersion" -ForegroundColor Green
+        Write-Host "Installed pip version: $pipVersion" -ForegroundColor Green
+    }
+
+    # Clone repository and checkout branch
     Write-Host "Cloning repository from: $GitBaseUrl" -ForegroundColor Yellow
     git clone $GitBaseUrl repo
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to clone repository from $GitBaseUrl"
     }
-    Write-Host "Repository cloned successfully" -ForegroundColor Green
-
-    # Change to repository directory
-    Set-Location "repo"
-
-    # Checkout the specified branch
-    Write-Host "Checking out branch: $BranchName" -ForegroundColor Yellow
-    git checkout $BranchName
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to checkout branch: $BranchName"
-    }
-    Write-Host "Successfully checked out branch: $BranchName" -ForegroundColor Green
-
-    # Verify the provision script exists
-    $ProvisionScriptPath = Join-Path "infra" "scripts" | Join-Path -ChildPath "fabric" | Join-Path -ChildPath "provision_fabric_items.ps1"
-    if (-not (Test-Path $ProvisionScriptPath)) {
-        throw "Provision script not found at: $ProvisionScriptPath"
-    }
-    Write-Host "Found provision script at: $ProvisionScriptPath" -ForegroundColor Green
-
-    # Change to the script directory
-    $ScriptDirectory = Join-Path "infra" "scripts" | Join-Path -ChildPath "fabric"
-    Set-Location $ScriptDirectory
-
-    # Prepare parameters for the provision script
-    $ProvisionParams = @{}
     
-    if ($FabricCapacityName) {
-        $ProvisionParams['FabricCapacityName'] = $FabricCapacityName
-        Write-Host "Using provided Fabric capacity name: $FabricCapacityName" -ForegroundColor Cyan
-    }
-    
-    if ($FabricWorkspaceName) {
-        $ProvisionParams['FabricWorkspaceName'] = $FabricWorkspaceName
-        Write-Host "Using provided Fabric workspace name: $FabricWorkspaceName" -ForegroundColor Cyan
-    }
+    Push-Location "repo"
+    try {
+        Write-Host "Checking out branch: $BranchName" -ForegroundColor Yellow
+        git checkout $BranchName
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to checkout branch: $BranchName"
+        }
+        Write-Host "Successfully checked out branch: $BranchName" -ForegroundColor Green
 
-    # Execute the provision script
-    Write-Host "Invoking provision_fabric_items.ps1..." -ForegroundColor Yellow
-    Write-Host "This may take several minutes to complete..." -ForegroundColor Cyan
-    
-    if ($ProvisionParams.Count -gt 0) {
-        & ".\provision_fabric_items.ps1" @ProvisionParams
-    }
-    else {
-        & ".\provision_fabric_items.ps1"
-    }
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ Fabric deployment completed successfully!" -ForegroundColor Green
-        Write-Host ""
-        Write-Host "Deployment Summary:" -ForegroundColor Cyan
-        Write-Host "- Repository: $GitBaseUrl" -ForegroundColor White
-        Write-Host "- Branch: $BranchName" -ForegroundColor White
+        # Navigate to script directory and prepare execution
+        $ScriptDirectory = Join-Path "infra" "scripts" "fabric"
+        $ProvisionScriptPath = Join-Path $ScriptDirectory "provision_fabric_items.sh"
+        
+        if (-not (Test-Path $ProvisionScriptPath)) {
+            throw "Provision script not found at: $ProvisionScriptPath"
+        }
+        Write-Host "Found provision script at: $ProvisionScriptPath" -ForegroundColor Green
+
+        Set-Location $ScriptDirectory
+
+        # Make script executable and prepare arguments
+        chmod +x provision_fabric_items.sh
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Failed to make script executable, but continuing..."
+        }
+
+        # Build arguments array efficiently
+        $ProvisionArgs = @()
         if ($FabricCapacityName) {
-            Write-Host "- Fabric Capacity: $FabricCapacityName" -ForegroundColor White
+            $ProvisionArgs += @("--capacityName", $FabricCapacityName)
+            Write-Host "Using Fabric capacity name: $FabricCapacityName" -ForegroundColor Cyan
         }
         if ($FabricWorkspaceName) {
-            Write-Host "- Fabric Workspace: $FabricWorkspaceName" -ForegroundColor White
+            $ProvisionArgs += @("--workspaceName", $FabricWorkspaceName)
+            Write-Host "Using Fabric workspace name: $FabricWorkspaceName" -ForegroundColor Cyan
+        }
+
+        # Execute the provision script
+        Write-Host "Invoking provision_fabric_items.sh..." -ForegroundColor Yellow
+        Write-Host "This may take several minutes to complete..." -ForegroundColor Cyan
+        
+        if ($ProvisionArgs.Count -gt 0) {
+            & bash ./provision_fabric_items.sh @ProvisionArgs
+        } else {
+            & bash ./provision_fabric_items.sh
+        }
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "✅ Fabric deployment completed successfully!" -ForegroundColor Green
+            Write-Host ""
+            Write-Host "Deployment Summary:" -ForegroundColor Cyan
+            Write-Host "- Repository: $GitBaseUrl" -ForegroundColor White
+            Write-Host "- Branch: $BranchName" -ForegroundColor White
+            if ($FabricCapacityName) {
+                Write-Host "- Fabric Capacity: $FabricCapacityName" -ForegroundColor White
+            }
+            if ($FabricWorkspaceName) {
+                Write-Host "- Fabric Workspace: $FabricWorkspaceName" -ForegroundColor White
+            }
+        } else {
+            throw "Provision script execution failed with exit code: $LASTEXITCODE"
         }
     }
-    else {
-        throw "Provision script execution failed with exit code: $LASTEXITCODE"
+    finally {
+        # Always return from the repo directory
+        Pop-Location
     }
 }
 catch {
@@ -194,20 +207,26 @@ catch {
     throw
 }
 finally {
-    # Clean up: return to original location
+    # Optimized cleanup
+    Write-Host "Cleaning up..." -ForegroundColor Yellow
+    
+    # Return to original location if we're in a pushed location
     try {
-        if (Get-Location -Stack -ErrorAction SilentlyContinue) {
-            Pop-Location
+        while (Get-Location -Stack -ErrorAction SilentlyContinue) {
+            Pop-Location -ErrorAction SilentlyContinue
         }
-        
-        # Clean up cloned repository if it exists
-        if (Test-Path "repo") {
-            Write-Host "Cleaning up cloned repository..." -ForegroundColor Yellow
-            Remove-Item -Path "repo" -Recurse -Force -ErrorAction SilentlyContinue
-        }
+    } catch {
+        # If Pop-Location fails, just continue
     }
-    catch {
-        Write-Warning "Failed to clean up: $($_.Exception.Message)"
+    
+    # Clean up cloned repository
+    if (Test-Path "repo") {
+        try {
+            Remove-Item -Path "repo" -Recurse -Force -ErrorAction Stop
+            Write-Host "Repository cleanup completed" -ForegroundColor Green
+        } catch {
+            Write-Warning "Failed to clean up repository: $($_.Exception.Message)"
+        }
     }
 }
 

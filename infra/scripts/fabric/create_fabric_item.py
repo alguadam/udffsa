@@ -11,6 +11,7 @@ from fabric_api import create_fabric_client, FabricApiError
 from powerbi_api import *
 import logging
 from datetime import datetime
+from azure.identity import DefaultAzureCredential
 
 # Enhanced logging configuration
 logging.basicConfig(
@@ -24,6 +25,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 solution_name = "Unified Data Foundation with Fabric"
+
+# Track deployment start time
+deployment_start_time = time.time()
 
 # Log deployment start
 logger.info(f"=" * 80)
@@ -165,6 +169,7 @@ except Exception as e:
     logger.error(f"❌ Failed to authenticate with Fabric APIs")
     logger.error(f"Details: {str(e)}")
     logger.error("Solution: Please ensure you are logged in with Azure CLI: az login")
+    logger.exception("Full authentication error details:")
     sys.exit(1)
 
 #############
@@ -174,7 +179,6 @@ except Exception as e:
 
 logger.info("🏗️ Setting up workspace...")
 try:
-    # Get capacity ID from capacity name
     logger.info(f"🔍 Looking up capacity: '{capacity_name}'")
     start_time = time.time()
     capacities = fabric_client.get_capacities()
@@ -230,6 +234,7 @@ except FabricApiError as e:
     logger.error(f"❌ Fabric API error during workspace setup")
     logger.error(f"Status Code: {e.status_code}")
     logger.error(f"Details: {str(e)}")
+    logger.exception("Full API error details:")
     if e.status_code == 404:
         logger.error("Solution: Verify capacity name and ensure it exists")
     elif e.status_code == 403:
@@ -237,6 +242,7 @@ except FabricApiError as e:
     sys.exit(1)
 except Exception as e:
     logger.error(f"❌ Unexpected error during workspace setup: {str(e)}")
+    logger.exception("Full workspace setup error details:")
     sys.exit(1)
 
 ####################
@@ -292,9 +298,11 @@ try:
                 
 except FabricApiError as e:
     logger.error(f"❌ Failed to manage folders: {e}")
+    logger.exception("Full folder management error details:")
     sys.exit(1)
 except Exception as e:
     logger.error(f"❌ Unexpected error managing folders: {str(e)}")
+    logger.exception("Full folder error details:")
     sys.exit(1)
 
 ##############
@@ -354,10 +362,12 @@ try:
             except FabricApiError as e:
                 logger.error(f"❌ Failed to create lakehouse '{lakehouse_name}': {e}")
                 logger.error("Solution: Check workspace permissions and quotas")
+                logger.exception("Full lakehouse creation error details:")
                 sys.exit(1)
             except Exception as e:
                 logger.error(f"❌ Unexpected error creating lakehouse '{lakehouse_name}': {str(e)}")
                 logger.error("Solution: Verify workspace configuration and try again")
+                logger.exception("Full lakehouse error details:")
                 sys.exit(1)
     
     total_lakehouse_time = time.time() - start_time
@@ -365,9 +375,11 @@ try:
 
 except FabricApiError as e:
     logger.error(f"❌ Failed to manage lakehouses: {e}")
+    logger.exception("Full lakehouse management error details:")
     sys.exit(1)
 except Exception as e:
     logger.error(f"❌ Unexpected error managing lakehouses: {str(e)}")
+    logger.exception("Full lakehouse management error details:")
     sys.exit(1)
 
 #######################
@@ -398,6 +410,7 @@ try:
 except Exception as e:
     logger.error(f"❌ Failed to connect to OneLake: {str(e)}")
     logger.error("Solution: Ensure you have proper permissions and the workspace is accessible")
+    logger.exception("Full OneLake connection error details:")
     sys.exit(1)
 
 # Create folder structure for CSV files
@@ -418,6 +431,7 @@ for local_file_path in csv_file_paths:
             created_folders.add(relative_folder_path)
         except Exception as e:
             logger.error(f"❌ Failed to create folder structure '{relative_folder_path}': {str(e)}")
+            logger.exception("Full folder creation error details:")
             sys.exit(1)
 
     # Upload file
@@ -432,6 +446,7 @@ for local_file_path in csv_file_paths:
         uploaded_files += 1
     except Exception as e:
         logger.error(f"❌ Failed to upload file '{file_name}': {str(e)}")
+        logger.exception("Full file upload error details:")
         sys.exit(1)
 
 total_upload_time = time.time() - start_time
@@ -535,6 +550,7 @@ try:
     except Exception as e:
         logger.error(f"❌ Failed to get existing notebooks: {str(e)}")
         logger.error("Solution: Check workspace permissions and connectivity")
+        logger.exception("Full notebook retrieval error details:")
         sys.exit(1)
     
     fabric_notebooks = {}
@@ -554,6 +570,7 @@ try:
         if not folder_id:
             logger.error(f"❌ Folder not found for path '{folder_path}', cannot deploy '{notebook_name}'")
             logger.error("Solution: Ensure folder structure was created successfully")
+            logger.error(f"Available folders: {list(fabric_folders.keys())}")
             sys.exit(1)
         
         # Get lakehouse objects
@@ -649,6 +666,7 @@ try:
         except Exception as e:
             logger.error(f"❌ Error uploading '{notebook_name}': {str(e)}")
             logger.error("Solution: Check notebook file integrity and workspace permissions")
+            logger.exception("Full notebook upload error details:")
             sys.exit(1)
     
     # Check jobs completion
@@ -682,11 +700,13 @@ try:
                     if time.time() - job['start_time'] > max_wait_time:
                         logger.error(f"❌ ERROR: Upload job for '{job['notebook_name']}' failed: {str(e)}")
                         logger.error("Solution: Check workspace performance and retry deployment")
+                        logger.exception("Full job monitoring error details:")
                         sys.exit(1)
                     else:
                         logger.warning(f"    ⚠️ Monitoring error for '{job['notebook_name']}': {str(e)}")
+                        logger.debug(f"Job monitoring error details:", exc_info=True)
                         jobs_to_remove.append(job)
-            
+    
             for job in jobs_to_remove:
                 pending_jobs.remove(job)
 
@@ -700,6 +720,7 @@ try:
     except Exception as e:
         logger.error(f"❌ ERROR: Failed to refresh notebooks list: {str(e)}")
         logger.error("Solution: Check workspace connectivity and permissions")
+        logger.exception("Full notebook list refresh error details:")
         sys.exit(1)
     
     uploaded_count = len([spec for spec in notebook_specs if os.path.basename(spec['path']).replace('.ipynb', '') in fabric_notebooks])
@@ -708,6 +729,7 @@ try:
     
 except Exception as e:
     logger.error(f"❌ Failed to deploy notebooks: {str(e)}")
+    logger.exception("Full notebook deployment error details:")
     sys.exit(1)
 
 #################
@@ -765,12 +787,7 @@ for i, notebook_name in enumerate(notebooks_to_run, 1):
         execution_results[notebook_name] = {'status': 'Failed', 'error': error_msg}
         failed_executions.append(notebook_name)
         logger.error(f"  ❌ Error executing '{notebook_name}' (took {execution_time:.2f}s): {error_msg}")
-    
-    # Add delay between notebook executions (except for last one)
-    if notebook_name != notebooks_to_run[-1]:
-        logger.info(f"    📋 Completed '{notebook_name}', proceeding to next notebook...")
-
-total_pipeline_time = time.time() - pipeline_start_time
+        logger.exception(f"Full execution error details for '{notebook_name}':")
 
 # Final results summary
 logger.info(f"\n📊 Execution Summary (took {total_pipeline_time:.2f}s total):")
@@ -806,6 +823,7 @@ except Exception as e:
     logger.error(f"❌ Failed to authenticate Power BI client")
     logger.error(f"Details: {str(e)}")
     logger.error("Solution: Ensure you have proper Power BI permissions and are logged in")
+    logger.exception("Full Power BI authentication error details:")
     sys.exit(1)
 
 reports_local_folder_path = os.path.join(repo_root, 'reports')
@@ -871,10 +889,12 @@ for i, pbix_file_path in enumerate(pbix_file_paths, 1):
         except Exception as e:
             logger.error(f"❌ Failed to configure dataset parameters for '{report_name}': {str(e)}")
             logger.error("Solution: Check lakehouse availability and Power BI permissions")
+            logger.exception("Full dataset configuration error details:")
             sys.exit(1)
     except Exception as e:
         logger.error(f"❌ Failed to deploy report '{report_name}': {str(e)}")
         logger.error("Solution: Verify the .pbix file is valid and you have upload permissions")
+        logger.exception("Full report deployment error details:")
         sys.exit(1)
 
 
@@ -882,7 +902,7 @@ for i, pbix_file_path in enumerate(pbix_file_paths, 1):
 # End of program #
 ##################
 
-total_deployment_time = time.time() - datetime.now().timestamp()
+total_deployment_time = time.time() - deployment_start_time
 logger.info("=" * 60)
 logger.info(f"🎉 {solution_name} deployment completed successfully!")
 logger.info(f"Deployment completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -896,4 +916,4 @@ if deployed_reports:
     for report in deployed_reports:
         logger.info(f"   📊 {report['name']} (ID: {report['id']})")
 logger.info("=" * 60)
-logger.info(f"📊 Deployment completed in {total_deployment_time:.2f} seconds")
+logger.info(f"📊 Total deployment time: {total_deployment_time:.2f} seconds")

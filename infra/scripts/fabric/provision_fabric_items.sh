@@ -124,14 +124,14 @@ WORK_DIR=$(pwd)
 # Clone repository (shallow clone for speed)
 print_step "Cloning repository (shallow clone for speed)..."
 if [ ! -d "$CLONE_DIR" ]; then
-    git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$CLONE_DIR"
+    git clone --depth 1 --single-branch --branch "$BRANCH" "$REPO_URL" "$CLONE_DIR" --quiet
     print_success "Repository cloned successfully"
 else
     print_info "Repository directory already exists"
 fi
 
 # Set up paths relative to the cloned repository
-SCRIPT_DIR="$WORK_DIR/$CLONE_DIR/infra/scripts/fabric"
+SCRIPT_DIR="$CLONE_DIR/infra/scripts/fabric"
 REQUIREMENTS_PATH="$SCRIPT_DIR/requirements.txt"
 
 print_info "Working directory: $WORK_DIR"
@@ -253,7 +253,7 @@ fi
 print_success "Dependencies installed successfully"
 
 # Change to the cloned repository directory
-cd "$WORK_DIR/$CLONE_DIR"
+cd "$CLONE_DIR"
 
 # Run the Python deployment script
 print_step "Starting Fabric items deployment..."

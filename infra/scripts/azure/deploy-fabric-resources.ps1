@@ -49,7 +49,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # Set execution policy for current process
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
+# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
 
 Write-Host "Starting Azure Deployment Script for Fabric resources..." -ForegroundColor Green
 Write-Host "Git Base URL: $GitBaseUrl" -ForegroundColor Cyan

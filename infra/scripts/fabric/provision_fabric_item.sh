@@ -10,12 +10,12 @@ requirementFile="requirements.txt"
 requirementFileUrl=${baseUrl}"infra/scripts/fabric/requirements.txt"
 
 echo "Downloading Python scripts..."
-curl --output "create_fabric_item.py" ${baseUrl}"infra/scripts/fabric/create_fabric_item.py"
-curl --output "fabric_api.py" ${baseUrl}"infra/scripts/fabric/fabric_api.py"
-curl --output "powerbi_api.py" ${baseUrl}"infra/scripts/fabric/powerbi_api.py"
+wget -O "create_fabric_item.py" ${baseUrl}"infra/scripts/fabric/create_fabric_item.py"
+wget -O "fabric_api.py" ${baseUrl}"infra/scripts/fabric/fabric_api.py"
+wget -O "powerbi_api.py" ${baseUrl}"infra/scripts/fabric/powerbi_api.py"
 
 # Download the requirement file
-curl --output "$requirementFile" "$requirementFileUrl"
+wget -O "$requirementFile" "$requirementFileUrl"
 
 # Check if workspace name is provided, otherwise use environment variable
 if [[ -z "$fabricWorkspaceName" ]]; then

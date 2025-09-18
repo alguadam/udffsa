@@ -101,7 +101,7 @@ module deployFabricResources './modules/deploy_fabric_resources.bicep' = {
   params: {
     location: location
     identity: userAssignedIdentity.outputs.resourceId
-    scriptUri: '${baseURL}infra/scripts/azure/deploy-nogit.sh'
+    scriptUri: '${baseURL}infra/scripts/azure/deploy-python.sh'
     baseUrl: baseURL
     capacityName: fabricCapacity.outputs.name
     gitRepo: 'https://github.com/alguadam/udffsa.git'

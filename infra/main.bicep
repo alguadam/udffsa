@@ -4,7 +4,7 @@ metadata description = '''CSA CTO Gold Standard Solution Accelerator for Unified
 @minLength(3)
 @maxLength(16)
 @description('Optional. A friendly string representing the application/solution name to give to all resource names in this deployment. This should be 3-16 characters long.')
-param solutionName string = 'udff'
+param solutionName string = 'udfwf'
 
 @maxLength(5)
 @description('Optional. A unique text value for the solution. This is used to ensure resource names are unique for global resources. Defaults to a 5-character substring of the unique string generated from the subscription ID, resource group name, and solution name.')
@@ -19,7 +19,10 @@ param location string = resourceGroup().location
 param enableTelemetry bool = true
 
 @description('Required. An array of user object IDs or service principal object IDs that will be assigned the Fabric Capacity Admin role. This can be used to add additional admins beyond the default admin which is the user assigned managed identity created as part of this deployment.')
-param fabricAdminMembers array
+param fabricAdminMembers array = []
+
+@description('Optional. The name to give to the Fabric Workspace.')
+param fabricWorkspaceName string = 'Unified Data Foundation With Fabric Workspace'
 
 @allowed([
   'F2'
@@ -85,9 +88,10 @@ module deploymentScript 'br/public:avm/res/resources/deployment-script:0.5.1' = 
       ]
     }
     retentionInterval: 'P1D'
-    primaryScriptUri: 'https://raw.githubusercontent.com/alguadam/udffsa/deployment-pipeline-alguadam/infra/scripts/azure/deploy-fabric-resources.ps1'
-    arguments: '-GitBaseUrl ${gitRepositoryUrl} -BranchName ${gitBranchName} -FabricCapacityName ${fabricCapacity.outputs.name}'
-    cleanupPreference: 'OnSuccess'
+    // primaryScriptUri: 'https://raw.githubusercontent.com/alguadam/udffsa/refs/heads/deployment-pipeline-alguadam/infra/scripts/azure/deploy-fabric-resources.ps1'
+    //arguments: '-GitBaseUrl ${gitRepositoryUrl} -BranchName ${gitBranchName} -FabricCapacityName ${fabricCapacity.outputs.name} -FabricWorkspaceName ${fabricWorkspaceName}'
+    cleanupPreference: 'OnExpiration'
+    scriptContent: 'Write-Host "Hello, World!"'
     timeout: 'PT1H'
   }
 }

@@ -3,19 +3,19 @@
 # Initialize variables
 baseUrl="$1"
 fabricCapacityName="$2"
-fabricWorkspaceName=""
+fabricWorkspaceName="PSL-MAAG-Work"
 
 # Variables
 requirementFile="requirements.txt"
 requirementFileUrl=${baseUrl}"infra/scripts/fabric/requirements.txt"
 
 echo "Downloading Python scripts..."
-wget -O "create_fabric_item.py" ${baseUrl}"infra/scripts/fabric/create_fabric_item.py"
-wget -O "fabric_api.py" ${baseUrl}"infra/scripts/fabric/fabric_api.py"
-wget -O "powerbi_api.py" ${baseUrl}"infra/scripts/fabric/powerbi_api.py"
+curl --output "create_fabric_item.py" ${baseUrl}"infra/scripts/fabric/create_fabric_item.py"
+curl --output "fabric_api.py" ${baseUrl}"infra/scripts/fabric/fabric_api.py"
+curl --output "powerbi_api.py" ${baseUrl}"infra/scripts/fabric/powerbi_api.py"
 
 # Download the requirement file
-wget -O "$requirementFile" "$requirementFileUrl"
+curl --output "$requirementFile" "$requirementFileUrl"
 
 # Check if workspace name is provided, otherwise use environment variable
 if [[ -z "$fabricWorkspaceName" ]]; then

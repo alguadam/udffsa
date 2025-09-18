@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-    Clones repository and deploys Microsoft Fabric items via Azure Deployment Script.
+    Clones repository and deploys Microsoft Fabric items via Azure Deployment Script on Ubuntu 24.04.
 
 .DESCRIPTION
-    This script is designed to run in an Azure Deployment Script (Azure PowerShell kind).
+    This script is designed to run in an Azure Deployment Script (Azure PowerShell kind) on Ubuntu 24.04.
     It clones the specified repository, checks out the target branch, and invokes the 
     provision_fabric_items.ps1 script to deploy Fabric resources.
 
@@ -25,10 +25,11 @@
     .\deploy-fabric-resources.ps1 -GitBaseUrl "https://github.com/alguadam/udffsa.git" -BranchName "main" -FabricCapacityName "MyCapacity"
 
 .NOTES
-    This script is intended to run within Azure Deployment Scripts with:
+    This script is intended to run within Azure Deployment Scripts on Ubuntu 24.04 with:
     - Azure PowerShell kind
     - Managed identity with appropriate permissions
     - Internet access for git operations
+    - Ubuntu 24.04 with apt package manager
 #>
 
 param(
@@ -53,12 +54,6 @@ Write-Host "Git Base URL: $GitBaseUrl" -ForegroundColor Cyan
 Write-Host "Branch Name: $BranchName" -ForegroundColor Cyan
 
 try {
-    # Detect operating system
-    $IsLinux = $PSVersionTable.Platform -eq 'Unix' -or $PSVersionTable.OS -like '*Linux*'
-    $IsWindows = $PSVersionTable.Platform -eq 'Win32NT' -or $PSVersionTable.PSEdition -eq 'Desktop' -or (-not $IsLinux)
-    
-    Write-Host "Detected OS: $(if ($IsLinux) { 'Linux' } else { 'Windows' })" -ForegroundColor Cyan
-    
     # Check if Git is installed, install if not present
     Write-Host "Checking Git installation..." -ForegroundColor Yellow
     try {
@@ -71,83 +66,48 @@ try {
         }
     }
     catch {
-        Write-Host "Git not found. Installing Git..." -ForegroundColor Yellow
+        Write-Host "Git not found. Installing Git on Ubuntu 24.04..." -ForegroundColor Yellow
         
-        if ($IsLinux) {
-            # Install Git on Linux using apt-get
-            Write-Host "Installing Git on Linux using apt-get..." -ForegroundColor Cyan
+        # Check if we're running as root or have sudo access
+        $currentUser = whoami
+        Write-Host "Current user: $currentUser" -ForegroundColor Cyan
+        
+        if ($currentUser -eq "root") {
+            # Running as root, no need for sudo
+            Write-Host "Running as root, installing Git directly..." -ForegroundColor Cyan
             
-            # Check if we're running as root or have sudo access
-            $currentUser = whoami
-            Write-Host "Current user: $currentUser" -ForegroundColor Cyan
-            
-            if ($currentUser -eq "root") {
-                # Running as root, no need for sudo
-                Write-Host "Running as root, installing Git directly..." -ForegroundColor Cyan
-                
-                # Update package list
-                apt-get update -y
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Failed to update package list"
-                }
-                
-                # Install git
-                apt-get install -y git
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Failed to install Git using apt-get"
-                }
-            }
-            else {
-                # Try with sudo
-                Write-Host "Attempting to install Git with sudo..." -ForegroundColor Cyan
-                
-                # Update package list
-                sudo apt-get update -y
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Failed to update package list with sudo"
-                }
-                
-                # Install git
-                sudo apt-get install -y git
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Failed to install Git using sudo apt-get"
-                }
+            # Update package list
+            apt-get update -y
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to update package list"
             }
             
-            # Verify installation
-            $gitVersion = git --version 2>&1
-            Write-Host "Installed Git version: $gitVersion" -ForegroundColor Green
+            # Install git
+            apt-get install -y git
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to install Git using apt-get"
+            }
         }
         else {
-            # Install Git on Windows
-            $gitDownloadUrl = "https://github.com/git-for-windows/git/releases/download/v2.42.0.windows.2/Git-2.42.0.2-64-bit.exe"
-            $gitInstallerPath = ".\GitInstaller.exe"
+            # Try with sudo
+            Write-Host "Attempting to install Git with sudo..." -ForegroundColor Cyan
             
-            Write-Host "Downloading Git installer from: $gitDownloadUrl" -ForegroundColor Cyan
-            Invoke-WebRequest -Uri $gitDownloadUrl -OutFile $gitInstallerPath -UseBasicParsing
-            
-            Write-Host "Installing Git silently..." -ForegroundColor Cyan
-            Start-Process -FilePath $gitInstallerPath -ArgumentList "/VERYSILENT", "/NORESTART", "/NOCANCEL", "/SP-", "/CLOSEAPPLICATIONS", "/RESTARTAPPLICATIONS", "/COMPONENTS=icons,ext\reg\shellhere,assoc,assoc_sh" -Wait
-            
-            # Add Git to PATH for current session
-            $gitPath = "${env:ProgramFiles}\Git\bin"
-            if (Test-Path $gitPath) {
-                $env:PATH = "$gitPath;$env:PATH"
-                Write-Host "Git installed successfully and added to PATH" -ForegroundColor Green
-                
-                # Verify installation
-                $gitVersion = git --version 2>&1
-                Write-Host "Installed Git version: $gitVersion" -ForegroundColor Green
-            }
-            else {
-                throw "Git installation failed - Git directory not found at $gitPath"
+            # Update package list
+            sudo apt-get update -y
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to update package list with sudo"
             }
             
-            # Clean up installer
-            if (Test-Path $gitInstallerPath) {
-                Remove-Item $gitInstallerPath -Force -ErrorAction SilentlyContinue
+            # Install git
+            sudo apt-get install -y git
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to install Git using sudo apt-get"
             }
         }
+        
+        # Verify installation
+        $gitVersion = git --version 2>&1
+        Write-Host "Installed Git version: $gitVersion" -ForegroundColor Green
     }
 
     # Clone the repository

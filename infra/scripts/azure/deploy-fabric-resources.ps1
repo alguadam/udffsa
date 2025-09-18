@@ -53,6 +53,102 @@ Write-Host "Git Base URL: $GitBaseUrl" -ForegroundColor Cyan
 Write-Host "Branch Name: $BranchName" -ForegroundColor Cyan
 
 try {
+    # Detect operating system
+    $IsLinux = $PSVersionTable.Platform -eq 'Unix' -or $PSVersionTable.OS -like '*Linux*'
+    $IsWindows = $PSVersionTable.Platform -eq 'Win32NT' -or $PSVersionTable.PSEdition -eq 'Desktop' -or (-not $IsLinux)
+    
+    Write-Host "Detected OS: $(if ($IsLinux) { 'Linux' } else { 'Windows' })" -ForegroundColor Cyan
+    
+    # Check if Git is installed, install if not present
+    Write-Host "Checking Git installation..." -ForegroundColor Yellow
+    try {
+        $gitVersion = git --version 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Git is already installed: $gitVersion" -ForegroundColor Green
+        }
+        else {
+            throw "Git not found"
+        }
+    }
+    catch {
+        Write-Host "Git not found. Installing Git..." -ForegroundColor Yellow
+        
+        if ($IsLinux) {
+            # Install Git on Linux using apt-get
+            Write-Host "Installing Git on Linux using apt-get..." -ForegroundColor Cyan
+            
+            # Check if we're running as root or have sudo access
+            $currentUser = whoami
+            Write-Host "Current user: $currentUser" -ForegroundColor Cyan
+            
+            if ($currentUser -eq "root") {
+                # Running as root, no need for sudo
+                Write-Host "Running as root, installing Git directly..." -ForegroundColor Cyan
+                
+                # Update package list
+                apt-get update -y
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to update package list"
+                }
+                
+                # Install git
+                apt-get install -y git
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to install Git using apt-get"
+                }
+            }
+            else {
+                # Try with sudo
+                Write-Host "Attempting to install Git with sudo..." -ForegroundColor Cyan
+                
+                # Update package list
+                sudo apt-get update -y
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to update package list with sudo"
+                }
+                
+                # Install git
+                sudo apt-get install -y git
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to install Git using sudo apt-get"
+                }
+            }
+            
+            # Verify installation
+            $gitVersion = git --version 2>&1
+            Write-Host "Installed Git version: $gitVersion" -ForegroundColor Green
+        }
+        else {
+            # Install Git on Windows
+            $gitDownloadUrl = "https://github.com/git-for-windows/git/releases/download/v2.42.0.windows.2/Git-2.42.0.2-64-bit.exe"
+            $gitInstallerPath = ".\GitInstaller.exe"
+            
+            Write-Host "Downloading Git installer from: $gitDownloadUrl" -ForegroundColor Cyan
+            Invoke-WebRequest -Uri $gitDownloadUrl -OutFile $gitInstallerPath -UseBasicParsing
+            
+            Write-Host "Installing Git silently..." -ForegroundColor Cyan
+            Start-Process -FilePath $gitInstallerPath -ArgumentList "/VERYSILENT", "/NORESTART", "/NOCANCEL", "/SP-", "/CLOSEAPPLICATIONS", "/RESTARTAPPLICATIONS", "/COMPONENTS=icons,ext\reg\shellhere,assoc,assoc_sh" -Wait
+            
+            # Add Git to PATH for current session
+            $gitPath = "${env:ProgramFiles}\Git\bin"
+            if (Test-Path $gitPath) {
+                $env:PATH = "$gitPath;$env:PATH"
+                Write-Host "Git installed successfully and added to PATH" -ForegroundColor Green
+                
+                # Verify installation
+                $gitVersion = git --version 2>&1
+                Write-Host "Installed Git version: $gitVersion" -ForegroundColor Green
+            }
+            else {
+                throw "Git installation failed - Git directory not found at $gitPath"
+            }
+            
+            # Clean up installer
+            if (Test-Path $gitInstallerPath) {
+                Remove-Item $gitInstallerPath -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
 
     # Clone the repository
     Write-Host "Cloning repository from: $GitBaseUrl" -ForegroundColor Yellow
@@ -74,14 +170,15 @@ try {
     Write-Host "Successfully checked out branch: $BranchName" -ForegroundColor Green
 
     # Verify the provision script exists
-    $ProvisionScriptPath = "infra\scripts\fabric\provision_fabric_items.ps1"
+    $ProvisionScriptPath = Join-Path "infra" "scripts" | Join-Path -ChildPath "fabric" | Join-Path -ChildPath "provision_fabric_items.ps1"
     if (-not (Test-Path $ProvisionScriptPath)) {
         throw "Provision script not found at: $ProvisionScriptPath"
     }
     Write-Host "Found provision script at: $ProvisionScriptPath" -ForegroundColor Green
 
     # Change to the script directory
-    Set-Location "infra\scripts\fabric"
+    $ScriptDirectory = Join-Path "infra" "scripts" | Join-Path -ChildPath "fabric"
+    Set-Location $ScriptDirectory
 
     # Prepare parameters for the provision script
     $ProvisionParams = @{}
@@ -137,19 +234,20 @@ catch {
     throw
 }
 finally {
-    # Clean up: return to original location and remove temp directory
+    # Clean up: return to original location
     try {
         if (Get-Location -Stack -ErrorAction SilentlyContinue) {
             Pop-Location
         }
         
-        if (Test-Path $TempDir) {
-            Write-Host "Cleaning up temporary directory: $TempDir" -ForegroundColor Yellow
-            Remove-Item -Path $TempDir -Recurse -Force -ErrorAction SilentlyContinue
+        # Clean up cloned repository if it exists
+        if (Test-Path "repo") {
+            Write-Host "Cleaning up cloned repository..." -ForegroundColor Yellow
+            Remove-Item -Path "repo" -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
     catch {
-        Write-Warning "Failed to clean up temporary directory: $($_.Exception.Message)"
+        Write-Warning "Failed to clean up: $($_.Exception.Message)"
     }
 }
 

@@ -80,7 +80,7 @@ module deploymentScript 'br/public:avm/res/resources/deployment-script:0.5.1' = 
     kind: 'AzurePowerShell'
     name: scriptResourceName
     // Non-required parameters
-    azPowerShellVersion: '9.7'
+    azPowerShellVersion: '14.4'
     location: location
     managedIdentities: {
       userAssignedResourceIds: [

@@ -92,127 +92,127 @@ show_usage() {
 print_success "Starting Microsoft Fabric deployment script..."
 
 # Download function with retry
-download() {
-    local url="$1" file="$2" max_attempts=3 attempt=1
-    while [[ $attempt -le $max_attempts ]]; do
-        if curl -fsSL "$url" -o "$file" 2>/dev/null; then
-            return 0
-        fi
-        ((attempt++))
-        [[ $attempt -le $max_attempts ]] && sleep 1
-    done
-    return 1
-}
+# download() {
+#     local url="$1" file="$2" max_attempts=3 attempt=1
+#     while [[ $attempt -le $max_attempts ]]; do
+#         if curl -fsSL "$url" -o "$file" 2>/dev/null; then
+#             return 0
+#         fi
+#         ((attempt++))
+#         [[ $attempt -le $max_attempts ]] && sleep 1
+#     done
+#     return 1
+# }
 
-# Base URL
-BASE="https://raw.githubusercontent.com/alguadam/udffsa/deployement-pipeline"
+# # Base URL
+# BASE="https://raw.githubusercontent.com/alguadam/udffsa/deployement-pipeline"
 
-info "📥 Creating directory structure..."
-mkdir -p udffsa/{infra/{scripts/fabric,data/samples_fabric/{finance,sales,shared}},src/fabric/Notebooks/{bronze_to_silver,silver_to_gold,data_management,schema,test_report},reports}
+# info "📥 Creating directory structure..."
+# mkdir -p udffsa/{infra/{scripts/fabric,data/samples_fabric/{finance,sales,shared}},src/fabric/Notebooks/{bronze_to_silver,silver_to_gold,data_management,schema,test_report},reports}
 
-info "📦 Downloading Python scripts..."
-{
-    download "$BASE/infra/scripts/fabric/create_fabric_items.py" "udffsa/infra/scripts/fabric/create_fabric_items.py" &
-    download "$BASE/infra/scripts/fabric/fabric_api.py" "udffsa/infra/scripts/fabric/fabric_api.py" &
-    download "$BASE/infra/scripts/fabric/powerbi_api.py" "udffsa/infra/scripts/fabric/powerbi_api.py" &
-    download "$BASE/infra/scripts/fabric/requirements.txt" "udffsa/infra/scripts/fabric/requirements.txt" &
-    wait
-}
+# info "📦 Downloading Python scripts..."
+# {
+#     download "$BASE/infra/scripts/fabric/create_fabric_items.py" "udffsa/infra/scripts/fabric/create_fabric_items.py" &
+#     download "$BASE/infra/scripts/fabric/fabric_api.py" "udffsa/infra/scripts/fabric/fabric_api.py" &
+#     download "$BASE/infra/scripts/fabric/powerbi_api.py" "udffsa/infra/scripts/fabric/powerbi_api.py" &
+#     download "$BASE/infra/scripts/fabric/requirements.txt" "udffsa/infra/scripts/fabric/requirements.txt" &
+#     wait
+# }
 
-info "📊 Downloading sample data..."
-{
-    # Finance samples
-    download "$BASE/infra/data/samples_fabric/finance/Account_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/finance/Account_Samples_Fabric.csv" &
-    download "$BASE/infra/data/samples_fabric/finance/Invoice_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/finance/Invoice_Samples_Fabric.csv" &
-    download "$BASE/infra/data/samples_fabric/finance/Payment_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/finance/Payment_Samples_Fabric.csv" &
+# info "📊 Downloading sample data..."
+# {
+#     # Finance samples
+#     download "$BASE/infra/data/samples_fabric/finance/Account_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/finance/Account_Samples_Fabric.csv" &
+#     download "$BASE/infra/data/samples_fabric/finance/Invoice_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/finance/Invoice_Samples_Fabric.csv" &
+#     download "$BASE/infra/data/samples_fabric/finance/Payment_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/finance/Payment_Samples_Fabric.csv" &
     
-    # Sales samples
-    download "$BASE/infra/data/samples_fabric/sales/Order_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/sales/Order_Samples_Fabric.csv" &
-    download "$BASE/infra/data/samples_fabric/sales/OrderLine_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/sales/OrderLine_Samples_Fabric.csv" &
-    download "$BASE/infra/data/samples_fabric/sales/OrderPayment_Fabric.csv" "udffsa/infra/data/samples_fabric/sales/OrderPayment_Fabric.csv" &
+#     # Sales samples
+#     download "$BASE/infra/data/samples_fabric/sales/Order_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/sales/Order_Samples_Fabric.csv" &
+#     download "$BASE/infra/data/samples_fabric/sales/OrderLine_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/sales/OrderLine_Samples_Fabric.csv" &
+#     download "$BASE/infra/data/samples_fabric/sales/OrderPayment_Fabric.csv" "udffsa/infra/data/samples_fabric/sales/OrderPayment_Fabric.csv" &
     
-    wait
+#     wait
     
-    # Shared samples
-    download "$BASE/infra/data/samples_fabric/shared/Customer_Samples.csv" "udffsa/infra/data/samples_fabric/shared/Customer_Samples.csv" &
-    download "$BASE/infra/data/samples_fabric/shared/CustomerAccount_Samples.csv" "udffsa/infra/data/samples_fabric/shared/CustomerAccount_Samples.csv" &
-    download "$BASE/infra/data/samples_fabric/shared/CustomerRelationshipType_Samples.csv" "udffsa/infra/data/samples_fabric/shared/CustomerRelationshipType_Samples.csv" &
-    download "$BASE/infra/data/samples_fabric/shared/CustomerTradeName_Samples.csv" "udffsa/infra/data/samples_fabric/shared/CustomerTradeName_Samples.csv" &
-    download "$BASE/infra/data/samples_fabric/shared/Location_Samples.csv" "udffsa/infra/data/samples_fabric/shared/Location_Samples.csv" &
-    download "$BASE/infra/data/samples_fabric/shared/Product_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/shared/Product_Samples_Fabric.csv" &
-    download "$BASE/infra/data/samples_fabric/shared/ProductCategory_Samples.csv" "udffsa/infra/data/samples_fabric/shared/ProductCategory_Samples.csv" &
+#     # Shared samples
+#     download "$BASE/infra/data/samples_fabric/shared/Customer_Samples.csv" "udffsa/infra/data/samples_fabric/shared/Customer_Samples.csv" &
+#     download "$BASE/infra/data/samples_fabric/shared/CustomerAccount_Samples.csv" "udffsa/infra/data/samples_fabric/shared/CustomerAccount_Samples.csv" &
+#     download "$BASE/infra/data/samples_fabric/shared/CustomerRelationshipType_Samples.csv" "udffsa/infra/data/samples_fabric/shared/CustomerRelationshipType_Samples.csv" &
+#     download "$BASE/infra/data/samples_fabric/shared/CustomerTradeName_Samples.csv" "udffsa/infra/data/samples_fabric/shared/CustomerTradeName_Samples.csv" &
+#     download "$BASE/infra/data/samples_fabric/shared/Location_Samples.csv" "udffsa/infra/data/samples_fabric/shared/Location_Samples.csv" &
+#     download "$BASE/infra/data/samples_fabric/shared/Product_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/shared/Product_Samples_Fabric.csv" &
+#     download "$BASE/infra/data/samples_fabric/shared/ProductCategory_Samples.csv" "udffsa/infra/data/samples_fabric/shared/ProductCategory_Samples.csv" &
     
-    wait
-}
+#     wait
+# }
 
-info "📓 Downloading essential notebooks..."
-{
-    # Main notebooks
-    download "$BASE/src/fabric/Notebooks/run_bronze_to_silver.ipynb" "udffsa/src/fabric/Notebooks/run_bronze_to_silver.ipynb" &
-    download "$BASE/src/fabric/Notebooks/run_silver_to_gold.ipynb" "udffsa/src/fabric/Notebooks/run_silver_to_gold.ipynb" &
+# info "📓 Downloading essential notebooks..."
+# {
+#     # Main notebooks
+#     download "$BASE/src/fabric/Notebooks/run_bronze_to_silver.ipynb" "udffsa/src/fabric/Notebooks/run_bronze_to_silver.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/run_silver_to_gold.ipynb" "udffsa/src/fabric/Notebooks/run_silver_to_gold.ipynb" &
     
-    # Bronze to silver notebooks
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_account.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_account.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_invoice.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_invoice.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_payment.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_payment.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_order.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_order.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_orderLine.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_orderLine.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_orderPayment.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_orderPayment.ipynb" &
+#     # Bronze to silver notebooks
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_account.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_account.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_invoice.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_invoice.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_payment.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_payment.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_order.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_order.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_orderLine.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_orderLine.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_orderPayment.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_orderPayment.ipynb" &
     
-    wait
+#     wait
     
-    # More bronze to silver
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_order.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_order.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_orderLine.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_orderLine.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_orderPayment.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_orderPayment.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customer.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customer.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customeraccount.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customeraccount.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customerRelationshipType.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customerRelationshipType.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customerTradeName.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customerTradeName.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_location.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_location.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_product.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_product.ipynb" &
-    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_productCategory.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_productCategory.ipynb" &
+#     # More bronze to silver
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_order.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_order.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_orderLine.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_orderLine.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_orderPayment.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_orderPayment.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customer.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customer.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customeraccount.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customeraccount.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customerRelationshipType.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customerRelationshipType.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customerTradeName.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customerTradeName.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_location.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_location.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_product.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_product.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_productCategory.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_productCategory.ipynb" &
     
-    wait
+#     wait
     
-    # Data management notebooks
-    download "$BASE/src/fabric/Notebooks/data_management/drop_all_tables_gold.ipynb" "udffsa/src/fabric/Notebooks/data_management/drop_all_tables_gold.ipynb" &
-    download "$BASE/src/fabric/Notebooks/data_management/drop_all_tables_silver.ipynb" "udffsa/src/fabric/Notebooks/data_management/drop_all_tables_silver.ipynb" &
-    download "$BASE/src/fabric/Notebooks/data_management/truncate_all_tables_gold.ipynb" "udffsa/src/fabric/Notebooks/data_management/truncate_all_tables_gold.ipynb" &
-    download "$BASE/src/fabric/Notebooks/data_management/truncate_all_tables_silver.ipynb" "udffsa/src/fabric/Notebooks/data_management/truncate_all_tables_silver.ipynb" &
+#     # Data management notebooks
+#     download "$BASE/src/fabric/Notebooks/data_management/drop_all_tables_gold.ipynb" "udffsa/src/fabric/Notebooks/data_management/drop_all_tables_gold.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/data_management/drop_all_tables_silver.ipynb" "udffsa/src/fabric/Notebooks/data_management/drop_all_tables_silver.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/data_management/truncate_all_tables_gold.ipynb" "udffsa/src/fabric/Notebooks/data_management/truncate_all_tables_gold.ipynb" &
+#     download "$BASE/src/fabric/Notebooks/data_management/truncate_all_tables_silver.ipynb" "udffsa/src/fabric/Notebooks/data_management/truncate_all_tables_silver.ipynb" &
     
-    wait
-}
+#     wait
+# }
 
-info "📈 Downloading reports..."
-{
-    download "$BASE/reports/sales_dashboard.pbix" "udffsa/reports/sales_dashboard.pbix" &
-    download "$BASE/reports/sales_dashboard.pbit" "udffsa/reports/sales_dashboard.pbit" &
-    wait
-}
+# info "📈 Downloading reports..."
+# {
+#     download "$BASE/reports/sales_dashboard.pbix" "udffsa/reports/sales_dashboard.pbix" &
+#     download "$BASE/reports/sales_dashboard.pbit" "udffsa/reports/sales_dashboard.pbit" &
+#     wait
+# }
 
-success "✅ All files downloaded"
+# success "✅ All files downloaded"
 
-# # Variables
-# REPO_URL="https://github.com/alguadam/udffsa.git"
-# BRANCH="deployement-pipeline"
-# CLONE_DIR="udffsa"
+# Variables
+REPO_URL="https://github.com/alguadam/udffsa.git"
+BRANCH="deployement-pipeline"
+CLONE_DIR="udffsa"
 
-# # Get current working directory
-# WORK_DIR=$(pwd)
+# Get current working directory
+WORK_DIR=$(pwd)
 
-# # Clone repository (shallow clone for speed)
-# print_step "Cloning repository (shallow clone for speed)..."
-# if [ ! -d "$CLONE_DIR" ]; then
-#     git clone --depth 1 --single-branch --branch "$BRANCH" "$REPO_URL" "$CLONE_DIR" --quiet
-#     print_success "Repository cloned successfully"
-# else
-#     print_info "Repository directory already exists"
-# fi
+# Clone repository (shallow clone for speed)
+print_step "Cloning repository (shallow clone for speed)..."
+if [ ! -d "$CLONE_DIR" ]; then
+    git clone --depth 1 --single-branch --branch "$BRANCH" "$REPO_URL" "$CLONE_DIR" --quiet
+    print_success "Repository cloned successfully"
+else
+    print_info "Repository directory already exists"
+fi
 
 # Set up paths relative to the cloned repository
 SCRIPT_DIR="$CLONE_DIR/infra/scripts/fabric"
-REQUIREMENTS_PATH="udffsa/infra/scripts/fabric/requirements.txt"
+REQUIREMENTS_PATH="$CLONE_DIR/infra/scripts/fabric/requirements.txt"
 
 print_info "Working directory: $WORK_DIR"
 print_info "Script directory: $SCRIPT_DIR"

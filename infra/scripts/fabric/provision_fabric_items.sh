@@ -130,12 +130,8 @@ else
 fi
 
 # Set up paths relative to the cloned repository
-# SCRIPT_DIR="$CLONE_DIR/infra/scripts/fabric"
-REQUIREMENTS_PATH="$CLONE_DIR/infra/scripts/fabric/requirements.txt"
-
-# print_info "Working directory: $WORK_DIR"
-# print_info "Script directory: $SCRIPT_DIR"
-print_info "Requirements path: $REQUIREMENTS_PATH"
+SCRIPT_DIR="$CLONE_DIR/infra/scripts/fabric"
+REQUIREMENTS_PATH="$SCRIPT_DIR/requirements.txt"
 
 # Initialize variables
 fabricCapacityName=""
@@ -245,7 +241,7 @@ fi
 print_success "Dependencies installed successfully"
 
 # Change to the cloned repository directory
-cd "$CLONE_DIR"
+cd "$SCRIPT_DIR"
 
 # Run the Python deployment script
 print_step "Starting Fabric items deployment..."
@@ -258,7 +254,7 @@ if [[ -n "$fabricWorkspaceName" ]]; then
 fi
 
 # Run Python script from the correct location
-if $PYTHON_CMD -u infra/scripts/fabric/create_fabric_items.py "${python_args[@]}"; then
+if $PYTHON_CMD -u create_fabric_items.py "${python_args[@]}"; then
     echo ""
     print_success "✅ Fabric deployment completed successfully!"
 else

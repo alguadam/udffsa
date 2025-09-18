@@ -91,48 +91,128 @@ show_usage() {
 # Main script starts here
 print_success "Starting Microsoft Fabric deployment script..."
 
-# Install git efficiently (use Alpine package manager for speed)
-print_step "Installing git (optimized for container)..."
-if ! command_exists git; then
-    if command_exists apk; then
-        # Alpine Linux (fastest)
-        apk add --no-cache git
-    elif command_exists apt-get; then
-        # Ubuntu/Debian
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get update -qq && apt-get install -y -qq git
-    elif command_exists yum; then
-        # CentOS/RHEL
-        yum install -y git
-    else
-        print_error "❌ Unable to install git automatically."
-        exit 1
-    fi
-    print_success "Git installed successfully"
-else
-    print_success "Git is already available"
-fi
+# Download function with retry
+download() {
+    local url="$1" file="$2" max_attempts=3 attempt=1
+    while [[ $attempt -le $max_attempts ]]; do
+        if curl -fsSL "$url" -o "$file" 2>/dev/null; then
+            return 0
+        fi
+        ((attempt++))
+        [[ $attempt -le $max_attempts ]] && sleep 1
+    done
+    return 1
+}
 
-# Variables
-REPO_URL="https://github.com/alguadam/udffsa.git"
-BRANCH="deployement-pipeline"
-CLONE_DIR="udffsa"
+# Base URL
+BASE="https://raw.githubusercontent.com/alguadam/udffsa/deployement-pipeline"
 
-# Get current working directory
-WORK_DIR=$(pwd)
+info "📥 Creating directory structure..."
+mkdir -p udffsa/{infra/{scripts/fabric,data/samples_fabric/{finance,sales,shared}},src/fabric/Notebooks/{bronze_to_silver,silver_to_gold,data_management,schema,test_report},reports}
 
-# Clone repository (shallow clone for speed)
-print_step "Cloning repository (shallow clone for speed)..."
-if [ ! -d "$CLONE_DIR" ]; then
-    git clone --depth 1 --single-branch --branch "$BRANCH" "$REPO_URL" "$CLONE_DIR" --quiet
-    print_success "Repository cloned successfully"
-else
-    print_info "Repository directory already exists"
-fi
+info "📦 Downloading Python scripts..."
+{
+    download "$BASE/infra/scripts/fabric/create_fabric_items.py" "udffsa/infra/scripts/fabric/create_fabric_items.py" &
+    download "$BASE/infra/scripts/fabric/fabric_api.py" "udffsa/infra/scripts/fabric/fabric_api.py" &
+    download "$BASE/infra/scripts/fabric/powerbi_api.py" "udffsa/infra/scripts/fabric/powerbi_api.py" &
+    download "$BASE/infra/scripts/fabric/requirements.txt" "udffsa/infra/scripts/fabric/requirements.txt" &
+    wait
+}
+
+info "📊 Downloading sample data..."
+{
+    # Finance samples
+    download "$BASE/infra/data/samples_fabric/finance/Account_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/finance/Account_Samples_Fabric.csv" &
+    download "$BASE/infra/data/samples_fabric/finance/Invoice_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/finance/Invoice_Samples_Fabric.csv" &
+    download "$BASE/infra/data/samples_fabric/finance/Payment_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/finance/Payment_Samples_Fabric.csv" &
+    
+    # Sales samples
+    download "$BASE/infra/data/samples_fabric/sales/Order_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/sales/Order_Samples_Fabric.csv" &
+    download "$BASE/infra/data/samples_fabric/sales/OrderLine_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/sales/OrderLine_Samples_Fabric.csv" &
+    download "$BASE/infra/data/samples_fabric/sales/OrderPayment_Fabric.csv" "udffsa/infra/data/samples_fabric/sales/OrderPayment_Fabric.csv" &
+    
+    wait
+    
+    # Shared samples
+    download "$BASE/infra/data/samples_fabric/shared/Customer_Samples.csv" "udffsa/infra/data/samples_fabric/shared/Customer_Samples.csv" &
+    download "$BASE/infra/data/samples_fabric/shared/CustomerAccount_Samples.csv" "udffsa/infra/data/samples_fabric/shared/CustomerAccount_Samples.csv" &
+    download "$BASE/infra/data/samples_fabric/shared/CustomerRelationshipType_Samples.csv" "udffsa/infra/data/samples_fabric/shared/CustomerRelationshipType_Samples.csv" &
+    download "$BASE/infra/data/samples_fabric/shared/CustomerTradeName_Samples.csv" "udffsa/infra/data/samples_fabric/shared/CustomerTradeName_Samples.csv" &
+    download "$BASE/infra/data/samples_fabric/shared/Location_Samples.csv" "udffsa/infra/data/samples_fabric/shared/Location_Samples.csv" &
+    download "$BASE/infra/data/samples_fabric/shared/Product_Samples_Fabric.csv" "udffsa/infra/data/samples_fabric/shared/Product_Samples_Fabric.csv" &
+    download "$BASE/infra/data/samples_fabric/shared/ProductCategory_Samples.csv" "udffsa/infra/data/samples_fabric/shared/ProductCategory_Samples.csv" &
+    
+    wait
+}
+
+info "📓 Downloading essential notebooks..."
+{
+    # Main notebooks
+    download "$BASE/src/fabric/Notebooks/run_bronze_to_silver.ipynb" "udffsa/src/fabric/Notebooks/run_bronze_to_silver.ipynb" &
+    download "$BASE/src/fabric/Notebooks/run_silver_to_gold.ipynb" "udffsa/src/fabric/Notebooks/run_silver_to_gold.ipynb" &
+    
+    # Bronze to silver notebooks
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_account.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_account.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_invoice.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_invoice.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_payment.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_finance_payment.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_order.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_order.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_orderLine.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_orderLine.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_orderPayment.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesadb_orderPayment.ipynb" &
+    
+    wait
+    
+    # More bronze to silver
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_order.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_order.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_orderLine.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_orderLine.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_orderPayment.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_salesfabric_orderPayment.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customer.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customer.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customeraccount.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customeraccount.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customerRelationshipType.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customerRelationshipType.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customerTradeName.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_customerTradeName.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_location.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_location.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_product.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_product.ipynb" &
+    download "$BASE/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_productCategory.ipynb" "udffsa/src/fabric/Notebooks/bronze_to_silver/bronze_to_silver_shared_productCategory.ipynb" &
+    
+    wait
+    
+    # Data management notebooks
+    download "$BASE/src/fabric/Notebooks/data_management/drop_all_tables_gold.ipynb" "udffsa/src/fabric/Notebooks/data_management/drop_all_tables_gold.ipynb" &
+    download "$BASE/src/fabric/Notebooks/data_management/drop_all_tables_silver.ipynb" "udffsa/src/fabric/Notebooks/data_management/drop_all_tables_silver.ipynb" &
+    download "$BASE/src/fabric/Notebooks/data_management/truncate_all_tables_gold.ipynb" "udffsa/src/fabric/Notebooks/data_management/truncate_all_tables_gold.ipynb" &
+    download "$BASE/src/fabric/Notebooks/data_management/truncate_all_tables_silver.ipynb" "udffsa/src/fabric/Notebooks/data_management/truncate_all_tables_silver.ipynb" &
+    
+    wait
+}
+
+info "📈 Downloading reports..."
+{
+    download "$BASE/reports/sales_dashboard.pbix" "udffsa/reports/sales_dashboard.pbix" &
+    download "$BASE/reports/sales_dashboard.pbit" "udffsa/reports/sales_dashboard.pbit" &
+    wait
+}
+
+success "✅ All files downloaded"
+
+# # Variables
+# REPO_URL="https://github.com/alguadam/udffsa.git"
+# BRANCH="deployement-pipeline"
+# CLONE_DIR="udffsa"
+
+# # Get current working directory
+# WORK_DIR=$(pwd)
+
+# # Clone repository (shallow clone for speed)
+# print_step "Cloning repository (shallow clone for speed)..."
+# if [ ! -d "$CLONE_DIR" ]; then
+#     git clone --depth 1 --single-branch --branch "$BRANCH" "$REPO_URL" "$CLONE_DIR" --quiet
+#     print_success "Repository cloned successfully"
+# else
+#     print_info "Repository directory already exists"
+# fi
 
 # Set up paths relative to the cloned repository
 SCRIPT_DIR="$CLONE_DIR/infra/scripts/fabric"
-REQUIREMENTS_PATH="$SCRIPT_DIR/requirements.txt"
+REQUIREMENTS_PATH="udffsa/infra/scripts/fabric/requirements.txt"
 
 print_info "Working directory: $WORK_DIR"
 print_info "Script directory: $SCRIPT_DIR"
@@ -232,13 +312,6 @@ print_success "pip is available"
 print_step "Verifying required files..."
 if [[ ! -f "$REQUIREMENTS_PATH" ]]; then
     print_error "❌ requirements.txt not found at: $REQUIREMENTS_PATH"
-    print_info "Directory contents of $SCRIPT_DIR:"
-    ls -la "$SCRIPT_DIR" || echo "Directory does not exist"
-    exit 1
-fi
-
-if [[ ! -f "$SCRIPT_DIR/create_fabric_items.py" ]]; then
-    print_error "❌ create_fabric_items.py not found at: $SCRIPT_DIR/create_fabric_items.py"
     exit 1
 fi
 
@@ -253,7 +326,7 @@ fi
 print_success "Dependencies installed successfully"
 
 # Change to the cloned repository directory
-cd "$CLONE_DIR"
+# cd "$CLONE_DIR"
 
 # Run the Python deployment script
 print_step "Starting Fabric items deployment..."

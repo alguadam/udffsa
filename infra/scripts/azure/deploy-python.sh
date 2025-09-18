@@ -154,7 +154,7 @@ fi
 log "Downloading repository archive from GitHub using Python..."
 ARCHIVE_URL="https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/refs/heads/${BRANCH}.tar.gz"
 log "Archive URL: $ARCHIVE_URL"
-
+error_exit "Failed to create archive URL"
 # Create a Python script to download the file
 log "Creating Python download script..."
 cat > download_repo.py << 'EOF'

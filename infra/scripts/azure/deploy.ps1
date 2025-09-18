@@ -31,6 +31,19 @@ try {
     # Change to temp directory
     Set-Location $tempDir
     
+    # Check if git is available, install if needed (Linux environment)
+    try {
+        git --version | Out-Null
+    } catch {
+        Write-Output "Installing git..."
+        if ($IsLinux) {
+            Invoke-Expression "apt-get update -qq"
+            Invoke-Expression "apt-get install -y git"
+        } else {
+            throw "Git is not available and cannot be automatically installed on this platform"
+        }
+    }
+    
     # Clone the repository
     Write-Output "Cloning repository..."
     git clone --branch $Branch --depth 1 $GitRepo .
@@ -50,6 +63,18 @@ try {
     # Install Python requirements
     Write-Output "Installing Python requirements..."
     if (Test-Path "requirements.txt") {
+        # Check if pip is available, install if needed
+        try {
+            pip --version | Out-Null
+        } catch {
+            Write-Output "Installing pip..."
+            if ($IsLinux) {
+                Invoke-Expression "apt-get install -y python3-pip"
+            } else {
+                throw "pip is not available and cannot be automatically installed on this platform"
+            }
+        }
+        
         pip install -r requirements.txt
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to install Python requirements. Exit code: $LASTEXITCODE"

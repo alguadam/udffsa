@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Azure Deployment Script for Fabric Resources
-# This script clones the repository and runs the fabric provisioning script
+# Azure Deployment Script for Fabric Resources - No Git Version
+# This script downloads repository files directly without requiring git
 
 set -euo pipefail
 
@@ -52,7 +52,7 @@ if [[ -z "$BASE_URL" || -z "$CAPACITY_NAME" ]]; then
     usage
 fi
 
-echo "Starting Azure Fabric deployment script..."
+echo "Starting Azure Fabric deployment script (no-git version)..."
 echo "Base URL: $BASE_URL"
 echo "Capacity Name: $CAPACITY_NAME"
 echo "Git Repository: $GIT_REPO"
@@ -75,16 +75,23 @@ trap cleanup EXIT
 # Change to temp directory
 cd "$TEMP_DIR"
 
-# Install git if not available
-if ! command -v git &> /dev/null; then
-    echo "Installing git..."
-    apt-get update -qq
-    apt-get install -y git
+# Extract GitHub user/repo from URL
+if [[ "$GIT_REPO" =~ github\.com[/:]([^/]+)/([^/]+)(.git)?$ ]]; then
+    GITHUB_USER="${BASH_REMATCH[1]}"
+    GITHUB_REPO="${BASH_REMATCH[2]}"
+    GITHUB_REPO=${GITHUB_REPO%.git}  # Remove .git suffix if present
+else
+    echo "Error: Could not parse GitHub repository URL: $GIT_REPO"
+    exit 1
 fi
 
-# Clone the repository
-echo "Cloning repository..."
-git clone --branch "$BRANCH" --depth 1 "$GIT_REPO" .
+echo "Downloading repository archive from GitHub..."
+ARCHIVE_URL="https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/refs/heads/${BRANCH}.tar.gz"
+echo "Archive URL: $ARCHIVE_URL"
+
+# Download and extract the repository archive
+curl -fsSL "$ARCHIVE_URL" -o repo.tar.gz
+tar -xzf repo.tar.gz --strip-components=1
 
 # Navigate to the fabric scripts directory
 FABRIC_SCRIPTS_PATH="./infra/scripts/fabric"
@@ -99,11 +106,18 @@ cd "$FABRIC_SCRIPTS_PATH"
 echo "Installing Python requirements..."
 if [[ -f "requirements.txt" ]]; then
     # Ensure pip is available
-    if ! command -v pip &> /dev/null; then
+    if ! command -v pip &> /dev/null && ! command -v pip3 &> /dev/null; then
         echo "Installing pip..."
+        apt-get update -qq
         apt-get install -y python3-pip
     fi
-    pip install -r requirements.txt
+    
+    # Use pip3 if pip is not available
+    if command -v pip3 &> /dev/null; then
+        pip3 install -r requirements.txt
+    else
+        pip install -r requirements.txt
+    fi
 else
     echo "Warning: requirements.txt not found in fabric scripts directory"
 fi

@@ -107,40 +107,15 @@ try {
         Write-Host "Installed Git version: $gitVersion" -ForegroundColor Green
     }
 
-    # Install Python 3.13
-    Write-Host "Installing Python 3.13..." -ForegroundColor Yellow
+    # Install Python 3 (Ubuntu 24.04 default: Python 3.12)
+    Write-Host "Installing Python 3..." -ForegroundColor Yellow
     
-    # Install software-properties-common for add-apt-repository
-    Invoke-PackageCommand @("apt-get", "install", "-y", "software-properties-common") "Installing software-properties-common"
-    
-    # Add deadsnakes PPA for Python 3.13
-    Invoke-PackageCommand @("add-apt-repository", "-y", "ppa:deadsnakes/ppa") "Adding deadsnakes PPA"
-    
-    # Update package list after adding PPA
-    Invoke-PackageCommand @("apt-get", "update", "-y") "Updating package repositories after PPA addition"
-    
-    # Install Python 3.13 and related packages (pip may not be available directly for 3.13)
-    Invoke-PackageCommand @("apt-get", "install", "-y", "python3.13", "python3.13-venv", "python3.13-dev", "python3.13-distutils") "Installing Python 3.13 and essential packages"
-    
-    # Install pip for Python 3.13 using get-pip.py if python3.13-pip is not available
-    Write-Host "Setting up pip for Python 3.13..." -ForegroundColor Yellow
-    try {
-        # Try to install python3.13-pip first
-        Invoke-PackageCommand @("apt-get", "install", "-y", "python3.13-pip") "Installing python3.13-pip package"
-    }
-    catch {
-        Write-Host "python3.13-pip not available, installing pip manually..." -ForegroundColor Yellow
-        
-        # Download and install pip manually
-        curl -sS https://bootstrap.pypa.io/get-pip.py | python3.13
-        if ($LASTEXITCODE -ne 0) {
-            throw "Failed to install pip for Python 3.13"
-        }
-    }
+    # Install Python 3 and pip (much simpler approach)
+    Invoke-PackageCommand @("apt-get", "install", "-y", "python3", "python3-pip", "python3-venv") "Installing Python 3 and pip"
     
     # Verify installation
-    $pythonVersion = python3.13 --version 2>&1
-    $pipVersion = python3.13 -m pip --version 2>&1
+    $pythonVersion = python3 --version 2>&1
+    $pipVersion = python3 -m pip --version 2>&1
     Write-Host "Installed Python version: $pythonVersion" -ForegroundColor Green
     Write-Host "Installed pip version: $pipVersion" -ForegroundColor Green
 
@@ -188,12 +163,12 @@ try {
             Write-Host "Using Fabric workspace name: $FabricWorkspaceName" -ForegroundColor Cyan
         }
 
-        # Execute the provision script with Python 3.13
+        # Execute the provision script with Python 3
         Write-Host "Invoking provision_fabric_items.sh..." -ForegroundColor Yellow
         Write-Host "This may take several minutes to complete..." -ForegroundColor Cyan
         
-        # Set Python 3.13 environment variable for the script
-        $env:PYTHON_CMD = "python3.13"
+        # Set Python 3 environment variable for the script
+        $env:PYTHON_CMD = "python3"
         
         if ($ProvisionArgs.Count -gt 0) {
             & bash ./provision_fabric_items.sh @ProvisionArgs

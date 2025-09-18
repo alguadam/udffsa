@@ -18,7 +18,7 @@ resource create_fabric_resources 'Microsoft.Resources/deploymentScripts@2023-08-
   properties: {
     azCliVersion: '2.55.0'
     primaryScriptUri: scriptUri
-    arguments: '-c ${capacityName} -b ${baseUrl}'
+    arguments: '${baseUrl} ${capacityName}'
     timeout: 'PT1H'
     retentionInterval: 'PT1H'  // Retain for 1 hour for troubleshooting
     cleanupPreference:'OnSuccess'  // Keep resources until retention expires

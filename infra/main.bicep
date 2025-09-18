@@ -19,7 +19,7 @@ param location string = resourceGroup().location
 param enableTelemetry bool = true
 
 @description('Optional. An array of user object IDs or service principal object IDs that will be assigned the Fabric Capacity Admin role. This can be used to add additional admins beyond the default admin which is the user assigned managed identity created as part of this deployment.')
-param fabricAdminMembers array = ['e791bf0e-4c05-4db6-bc80-ccfa288be2a7']
+param fabricAdminMembers array
 
 @allowed([
   'F2'
@@ -88,7 +88,7 @@ var fabricCapacityResourceName = 'fc${solutionSuffix}'
 module fabricCapacity 'br/public:avm/res/fabric/capacity:0.1.1' = {
   name: take('avm.res.fabric.capacity.${fabricCapacityResourceName}', 64)
   params: {
-    adminMembers: [userAssignedIdentity.outputs.principalId]
+    adminMembers: union([userAssignedIdentity.outputs.principalId], fabricAdminMembers)
     name: fabricCapacityResourceName
     location: location
     skuName: skuName

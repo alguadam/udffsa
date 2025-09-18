@@ -43,7 +43,7 @@ if [[ -n "$fabricWorkspaceName" ]]; then
 fi
 
 # Run Python unbuffered so prints show immediately
-if python -u create_fabric_items.py "${python_args[@]}"; then
+if python -u create_fabric_item.py --capacityName "$fabricCapacityName" --workspaceName "$fabricWorkspaceName"; then
     echo ""
     echo "✅ Fabric deployment completed successfully!"
     echo ""

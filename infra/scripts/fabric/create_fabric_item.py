@@ -138,7 +138,8 @@ workspace_name = args.workspaceName
 
 # Initialize Fabric API client
 try:
-    fabric_client = create_fabric_client()
+    azure_credentials = DefaultAzureCredential()
+    fabric_client = create_fabric_client(azure_credentials)
     print("✅ Authentication successful")
 except Exception as e:
     print(f"❌ ERROR: Failed to authenticate with Fabric APIs")

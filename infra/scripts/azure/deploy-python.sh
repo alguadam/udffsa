@@ -19,6 +19,27 @@ error_exit() {
     exit 1
 }
 
+# Debug: Print all arguments
+log "=== DEBUGGING ARGUMENTS ==="
+log "Total arguments: $#"
+log "All arguments: $*"
+for i in $(seq 1 $#); do
+    eval "arg=\${$i}"
+    log "Argument $i: '$arg'"
+done
+log "=== END ARGUMENTS DEBUG ==="
+
+# Log all arguments received
+log "=== SCRIPT ARGUMENTS DEBUG ==="
+log "Total arguments received: $#"
+log "All arguments: $*"
+for i in {1..10}; do
+    if [[ -n "${!i:-}" ]]; then
+        log "Argument $i: ${!i}"
+    fi
+done
+log "=== END ARGUMENTS DEBUG ==="
+
 # Function to display usage
 usage() {
     log "Usage: $0 -b <base_url> -c <capacity_name> [-r <git_repo>] [-n <branch>]"
@@ -36,19 +57,25 @@ BASE_URL=""
 CAPACITY_NAME=""
 
 # Parse command line arguments
+log "Starting argument parsing..."
 while getopts "b:c:r:n:h" opt; do
+    log "Processing option: -$opt with value: $OPTARG"
     case $opt in
         b)
             BASE_URL="$OPTARG"
+            log "Set BASE_URL to: $BASE_URL"
             ;;
         c)
             CAPACITY_NAME="$OPTARG"
+            log "Set CAPACITY_NAME to: $CAPACITY_NAME"
             ;;
         r)
             GIT_REPO="$OPTARG"
+            log "Set GIT_REPO to: $GIT_REPO"
             ;;
         n)
             BRANCH="$OPTARG"
+            log "Set BRANCH to: $BRANCH"
             ;;
         h)
             usage
@@ -59,6 +86,13 @@ while getopts "b:c:r:n:h" opt; do
             ;;
     esac
 done
+log "Completed argument parsing"
+
+log "Final parameter values:"
+log "  BASE_URL: $BASE_URL"
+log "  CAPACITY_NAME: $CAPACITY_NAME"  
+log "  GIT_REPO: $GIT_REPO"
+log "  BRANCH: $BRANCH"
 
 # Check required parameters
 if [[ -z "$BASE_URL" || -z "$CAPACITY_NAME" ]]; then

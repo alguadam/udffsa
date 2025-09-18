@@ -231,6 +231,10 @@ if [[ ! -f "$REQUIREMENTS_PATH" ]]; then
 fi
 
 print_success "All required files found"
+
+$PYTHON_CMD -m venv "$SCRIPT_DIR/venv"
+source "$SCRIPT_DIR/venv/bin/activate"
+# Upgrade pip to the latest version
 $PIP_CMD install --upgrade pip
 # Install Python dependencies
 print_step "Installing Python dependencies..."

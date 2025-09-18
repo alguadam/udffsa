@@ -2,13 +2,12 @@
 # For fabric_api.py, powerbi_api.py, fabric_utils.py and related Fabric deployment scripts
 
 # Azure authentication and core libraries
-azure-core>=1.29.0
 azure-identity>=1.15.0
+azure-core>=1.29.0
+
 # Azure Data Lake Storage (required by fabric_utils.py)
 azure-storage-file-datalake>=12.14.0
-# Use compatible MSAL versions for Azure CLI environment
-# msal[broker]==1.24.0b1
-msal>=1.24.0,<1.25.0
+
 # HTTP requests
 requests>=2.31.0
 

@@ -10,7 +10,7 @@ requirementFile="requirements.txt"
 requirementFileUrl=${baseUrl}"infra/scripts/fabric/requirements.txt"
 
 echo "Downloading Python scripts..."
-curl --output "create_fabric_items.py" ${baseUrl}"infra/scripts/fabric/create_fabric_items.py"
+curl --output "create_fabric_item.py" ${baseUrl}"infra/scripts/fabric/create_fabric_item.py"
 curl --output "fabric_api.py" ${baseUrl}"infra/scripts/fabric/fabric_api.py"
 curl --output "powerbi_api.py" ${baseUrl}"infra/scripts/fabric/powerbi_api.py"
 

@@ -101,7 +101,7 @@ module deployFabricResources './modules/deploy_fabric_resources.bicep' = {
   params: {
     location: location
     identity: userAssignedIdentity.outputs.resourceId
-    scriptUri: '${baseURL}infra/scripts/azure/deploy-python.sh'
+    scriptUri: '${baseURL}infra/scripts/fabric/provision_fabric_items.sh'
     baseUrl: baseURL
     capacityName: fabricCapacity.outputs.name
   }

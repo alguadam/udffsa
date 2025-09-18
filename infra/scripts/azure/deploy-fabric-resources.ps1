@@ -48,21 +48,11 @@ param(
 # Set error action preference
 $ErrorActionPreference = "Stop"
 
-# Set execution policy for current process
-# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
-
 Write-Host "Starting Azure Deployment Script for Fabric resources..." -ForegroundColor Green
 Write-Host "Git Base URL: $GitBaseUrl" -ForegroundColor Cyan
 Write-Host "Branch Name: $BranchName" -ForegroundColor Cyan
 
 try {
-    # Create a temporary directory for the repository
-    $TempDir = Join-Path $env:TEMP "fabric-deployment-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-    Write-Host "Creating temporary directory: $TempDir" -ForegroundColor Yellow
-    New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
-
-    # Change to temporary directory
-    Push-Location $TempDir
 
     # Clone the repository
     Write-Host "Cloning repository from: $GitBaseUrl" -ForegroundColor Yellow

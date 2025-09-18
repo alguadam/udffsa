@@ -89,7 +89,7 @@ module deploymentScript 'br/public:avm/res/resources/deployment-script:0.5.1' = 
     }
     retentionInterval: 'P1D'
     primaryScriptUri: 'https://raw.githubusercontent.com/alguadam/udffsa/refs/heads/deployment-pipeline-alguadam/infra/scripts/azure/deploy-fabric-resources.ps1'
-    arguments: '-GitBaseUrl \\\'${gitRepositoryUrl}\\\' -BranchName \\\'${gitBranchName}\\\' -FabricCapacityName \\\'${fabricCapacity.outputs.name}\\\' -FabricWorkspaceName \\\'${fabricWorkspaceName}\\\''
+    arguments: '-GitBaseUrl \'${gitRepositoryUrl}\' -BranchName \'${gitBranchName}\' -FabricCapacityName \'${fabricCapacity.outputs.name}\' -FabricWorkspaceName \'${fabricWorkspaceName}\''
     cleanupPreference: 'OnExpiration'
     timeout: 'PT1H'
   }

@@ -23,7 +23,7 @@ error_exit() {
 log "=== DEBUGGING ARGUMENTS ==="
 log "Total arguments: $#"
 log "All arguments: $*"
-for i in $(seq 1 $#); do
+for i in $(seq 0 $#); do
     eval "arg=\${$i}"
     log "Argument $i: '$arg'"
 done
@@ -67,12 +67,12 @@ while [[ $# -gt 0 ]]; do
             GIT_REPO="$2"
             shift 2
             ;;
-        -b)
-            BASE_URL="$2"
-            shift 2
-            ;;
         -n)
             BRANCH="$2"
+            shift 2
+            ;;
+        -b)
+            BASE_URL="$2"
             shift 2
             ;;
         -h|--help)

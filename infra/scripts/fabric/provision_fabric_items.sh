@@ -239,7 +239,7 @@ if ! $PIP_CMD install -r "$REQUIREMENTS_PATH" --quiet; then
     exit 1
 fi
 print_success "Dependencies installed successfully"
-
+exit 1
 # Change to the cloned repository directory
 cd "$SCRIPT_DIR"
 

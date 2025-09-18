@@ -125,6 +125,7 @@ CLONE_DIR="udffsa"
 if [ ! -d "$CLONE_DIR/.git" ]; then
     echo "Cloning repository..."
     git clone --branch "$BRANCH" "$REPO_URL" "$CLONE_DIR"
+    cd "$CLONE_DIR"
 else
     echo "Repository already exists. Fetching latest changes..."
     cd "$CLONE_DIR"

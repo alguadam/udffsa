@@ -231,7 +231,7 @@ if [[ ! -f "$REQUIREMENTS_PATH" ]]; then
 fi
 
 print_success "All required files found"
-
+$PIP_CMD install --upgrade pip
 # Install Python dependencies
 print_step "Installing Python dependencies..."
 if ! $PIP_CMD install -r "$REQUIREMENTS_PATH" --quiet; then

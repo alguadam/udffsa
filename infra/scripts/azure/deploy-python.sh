@@ -52,7 +52,7 @@ usage() {
 
 # Default values
 GIT_REPO="https://github.com/alguadam/udffsa.git"
-BRANCH="main"
+BRANCH="deployement-pipeline"
 BASE_URL=""
 CAPACITY_NAME=""
 

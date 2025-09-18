@@ -3,7 +3,6 @@
 
 # Azure authentication and core libraries
 azure-core>=1.29.0
-msal==1.24.0b1
 azure-identity==1.23.0
 # Azure Data Lake Storage (required by fabric_utils.py)
 azure-storage-file-datalake==12.20.0

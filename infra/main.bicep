@@ -18,7 +18,7 @@ param location string = resourceGroup().location
 @description('Optional. Enable/Disable usage telemetry for module.')
 param enableTelemetry bool = true
 
-@description('Optional. An array of user object IDs or service principal object IDs that will be assigned the Fabric Capacity Admin role. This can be used to add additional admins beyond the default admin which is the user assigned managed identity created as part of this deployment.')
+@description('Required. An array of user object IDs or service principal object IDs that will be assigned the Fabric Capacity Admin role. This can be used to add additional admins beyond the default admin which is the user assigned managed identity created as part of this deployment.')
 param fabricAdminMembers array
 
 @allowed([
@@ -37,19 +37,6 @@ param fabricAdminMembers array
 @description('Optional. SKU tier of the Fabric resource.')
 param skuName string = 'F2'
 
-@description('Optional. Specifies the resource tags for all the resources. Tag "azd-env-name" is automatically added to all resources.')
-param tags object = {}
-
-@description('Optional created by user name')
-param createdBy string = empty(deployer().userPrincipalName) ? '' : split(deployer().userPrincipalName, '@')[0]
-
-var allTags = union(
-  {
-    'azd-env-name': solutionName
-  },
-  tags
-)
-
 var solutionSuffix = toLower(trim(replace(
   replace(
     replace(replace(replace(replace('${solutionName}${solutionUniqueText}', '-', ''), '_', ''), '.', ''), '/', ''),
@@ -59,20 +46,6 @@ var solutionSuffix = toLower(trim(replace(
   '*',
   ''
 )))
-var baseURL = 'https://raw.githubusercontent.com/alguadam/udffsa/deployement-pipeline/'
-
-// ========== Resource Group Tag ========== //
-resource resourceGroupTags 'Microsoft.Resources/tags@2021-04-01' = {
-  name: 'default'
-  properties: {
-    tags: {
-      ...allTags
-      TemplateName: 'UDFF'
-      SecurityControl: 'Ignore'
-      createdBy: createdBy
-    }
-  }
-}
 
 var userAssignedIdentityResourceName = 'id-${solutionSuffix}'
 module userAssignedIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.4.1' = {
@@ -95,15 +68,27 @@ module fabricCapacity 'br/public:avm/res/fabric/capacity:0.1.1' = {
   }
 }
 
-module deployFabricResources './modules/deploy_fabric_resources.bicep' = {
-  name: 'main_deploy_fabric_resourcesscript'
-  scope: resourceGroup()
+var scriptResourceName = 'ds-${solutionSuffix}'
+var gitRepositoryUrl string = 'https://github.com/alguadam/udffsa.git'
+var gitBranchName string = 'deployment-pipeline-alguadam'
+module deploymentScript 'br/public:avm/res/resources/deployment-script:0.5.1' = {
+  name: take('avm.res.resources.deployment-script.${scriptResourceName}', 64)
   params: {
+    kind: 'AzurePowerShell'
+    name: scriptResourceName
+    // Non-required parameters
+    azPowerShellVersion: '9.7'
     location: location
-    identity: userAssignedIdentity.outputs.resourceId
-    scriptUri: '${baseURL}infra/scripts/fabric/provision_fabric_items.sh'
-    baseUrl: baseURL
-    capacityName: fabricCapacity.outputs.name
+    managedIdentities: {
+      userAssignedResourceIds: [
+        userAssignedIdentity.outputs.resourceId
+      ]
+    }
+    retentionInterval: 'P1D'
+    primaryScriptUri: 'https://raw.githubusercontent.com/alguadam/udffsa/deployment-pipeline-alguadam/infra/scripts/azure/deploy-fabric-resources.ps1'
+    arguments: '-GitBaseUrl ${gitRepositoryUrl} -BranchName ${gitBranchName} -FabricCapacityName ${fabricCapacity.outputs.name}'
+    cleanupPreference: 'OnSuccess'
+    timeout: 'PT1H'
   }
 }
 

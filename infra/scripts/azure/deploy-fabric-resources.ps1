@@ -220,30 +220,5 @@ catch {
     # Re-throw to ensure deployment script fails
     throw
 }
-finally {
-    # Optimized cleanup
-    Write-Host "Cleaning up..." -ForegroundColor Yellow
-    
-    # Return to original location if we're in a pushed location
-    try {
-        while (Get-Location -Stack -ErrorAction SilentlyContinue) {
-            Pop-Location -ErrorAction SilentlyContinue
-        }
-    }
-    catch {
-        # If Pop-Location fails, just continue
-    }
-    
-    # Clean up cloned repository
-    if (Test-Path "repo") {
-        try {
-            Remove-Item -Path "repo" -Recurse -Force -ErrorAction Stop
-            Write-Host "Repository cleanup completed" -ForegroundColor Green
-        }
-        catch {
-            Write-Warning "Failed to clean up repository: $($_.Exception.Message)"
-        }
-    }
-}
 
 Write-Host "Azure Deployment Script execution completed." -ForegroundColor Green

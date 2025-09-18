@@ -25,7 +25,7 @@ if [[ -z "$fabricWorkspaceName" ]]; then
     fi
 fi
 
-if ! python install -r "$requirementFile" --quiet; then
+if ! pip install -r "$requirementFile" --quiet; then
     echo "❌ Failed to install Python dependencies. Please check requirements.txt and try again."
     exit 1
 fi

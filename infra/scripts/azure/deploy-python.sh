@@ -80,7 +80,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         *)
-            print_error "❌ Unknown option: $1"
+            log "❌ Unknown option: $1"
             echo ""
             show_usage
             exit 1

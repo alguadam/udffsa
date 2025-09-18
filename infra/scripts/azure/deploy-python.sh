@@ -5,13 +5,27 @@
 
 set -euo pipefail
 
+# Enable debug mode
+set -x
+
+# Function to log with timestamps
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+# Function to handle errors
+error_exit() {
+    log "ERROR: $1"
+    exit 1
+}
+
 # Function to display usage
 usage() {
-    echo "Usage: $0 -b <base_url> -c <capacity_name> [-r <git_repo>] [-n <branch>]"
-    echo "  -b: Base URL for the deployment"
-    echo "  -c: Capacity name for Fabric resources"
-    echo "  -r: Git repository URL (optional, defaults to https://github.com/alguadam/udffsa.git)"
-    echo "  -n: Git branch name (optional, defaults to main)"
+    log "Usage: $0 -b <base_url> -c <capacity_name> [-r <git_repo>] [-n <branch>]"
+    log "  -b: Base URL for the deployment"
+    log "  -c: Capacity name for Fabric resources"
+    log "  -r: Git repository URL (optional, defaults to https://github.com/alguadam/udffsa.git)"
+    log "  -n: Git branch name (optional, defaults to main)"
     exit 1
 }
 
@@ -48,71 +62,113 @@ done
 
 # Check required parameters
 if [[ -z "$BASE_URL" || -z "$CAPACITY_NAME" ]]; then
-    echo "Error: Base URL and Capacity Name are required parameters."
-    usage
+    error_exit "Base URL and Capacity Name are required parameters."
 fi
 
-echo "Starting Azure Fabric deployment script (Python-based download)..."
-echo "Base URL: $BASE_URL"
-echo "Capacity Name: $CAPACITY_NAME"
-echo "Git Repository: $GIT_REPO"
-echo "Branch: $BRANCH"
+log "Starting Azure Fabric deployment script (Python-based download)..."
+log "Base URL: $BASE_URL"
+log "Capacity Name: $CAPACITY_NAME"
+log "Git Repository: $GIT_REPO"
+log "Branch: $BRANCH"
+
+# Verify Python is available
+log "Checking Python availability..."
+if ! command -v python3 &> /dev/null; then
+    error_exit "Python3 is not available in this environment"
+fi
+
+python3 --version
+log "Python3 is available"
 
 # Create a temporary directory
 TEMP_DIR="/tmp/fabric-deployment-$(date +%Y%m%d-%H%M%S)"
-echo "Creating temporary directory: $TEMP_DIR"
-mkdir -p "$TEMP_DIR"
+log "Creating temporary directory: $TEMP_DIR"
+mkdir -p "$TEMP_DIR" || error_exit "Failed to create temporary directory"
 
 # Cleanup function
 cleanup() {
-    echo "Cleaning up temporary directory: $TEMP_DIR"
-    rm -rf "$TEMP_DIR" || echo "Warning: Failed to cleanup temporary directory"
+    log "Cleaning up temporary directory: $TEMP_DIR"
+    rm -rf "$TEMP_DIR" || log "Warning: Failed to cleanup temporary directory"
 }
 
 # Set trap to cleanup on exit
 trap cleanup EXIT
 
 # Change to temp directory
-cd "$TEMP_DIR"
+cd "$TEMP_DIR" || error_exit "Failed to change to temporary directory"
+log "Changed to temporary directory: $(pwd)"
 
 # Extract GitHub user/repo from URL
 if [[ "$GIT_REPO" =~ github\.com[/:]([^/]+)/([^/]+)(.git)?$ ]]; then
     GITHUB_USER="${BASH_REMATCH[1]}"
     GITHUB_REPO="${BASH_REMATCH[2]}"
     GITHUB_REPO=${GITHUB_REPO%.git}  # Remove .git suffix if present
+    log "Parsed GitHub repository: $GITHUB_USER/$GITHUB_REPO"
 else
-    echo "Error: Could not parse GitHub repository URL: $GIT_REPO"
-    exit 1
+    error_exit "Could not parse GitHub repository URL: $GIT_REPO"
 fi
 
-echo "Downloading repository archive from GitHub using Python..."
+log "Downloading repository archive from GitHub using Python..."
 ARCHIVE_URL="https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/refs/heads/${BRANCH}.tar.gz"
-echo "Archive URL: $ARCHIVE_URL"
+log "Archive URL: $ARCHIVE_URL"
 
 # Create a Python script to download the file
+log "Creating Python download script..."
 cat > download_repo.py << 'EOF'
 import sys
 import urllib.request
 import tarfile
 import os
+import traceback
 
 def download_and_extract(url, filename):
     try:
-        print(f"Downloading {url}...")
-        urllib.request.urlretrieve(url, filename)
-        print(f"Downloaded {filename}")
+        print(f"[PYTHON] Downloading {url}...")
         
-        print(f"Extracting {filename}...")
+        # Create a request with proper headers
+        req = urllib.request.Request(url)
+        req.add_header('User-Agent', 'Azure-Deployment-Script/1.0')
+        
+        # Download the file
+        with urllib.request.urlopen(req) as response:
+            if response.getcode() != 200:
+                print(f"[PYTHON] HTTP Error: {response.getcode()}")
+                return False
+                
+            with open(filename, 'wb') as f:
+                f.write(response.read())
+                
+        print(f"[PYTHON] Downloaded {filename}")
+        
+        # Verify file exists and has content
+        if not os.path.exists(filename):
+            print(f"[PYTHON] Error: Downloaded file {filename} does not exist")
+            return False
+            
+        file_size = os.path.getsize(filename)
+        if file_size == 0:
+            print(f"[PYTHON] Error: Downloaded file {filename} is empty")
+            return False
+            
+        print(f"[PYTHON] File size: {file_size} bytes")
+        
+        print(f"[PYTHON] Extracting {filename}...")
         with tarfile.open(filename, 'r:gz') as tar:
             # Get the top-level directory name
             members = tar.getnames()
-            if members:
-                top_dir = members[0].split('/')[0]
+            if not members:
+                print("[PYTHON] Error: Archive is empty")
+                return False
                 
-                # Extract all files
-                tar.extractall()
-                
-                # Move contents from the subdirectory to current directory
+            print(f"[PYTHON] Archive contains {len(members)} files")
+            top_dir = members[0].split('/')[0]
+            print(f"[PYTHON] Top level directory: {top_dir}")
+            
+            # Extract all files
+            tar.extractall()
+            
+            # Move contents from the subdirectory to current directory
+            if os.path.exists(top_dir):
                 for item in os.listdir(top_dir):
                     src = os.path.join(top_dir, item)
                     dst = item
@@ -124,83 +180,135 @@ def download_and_extract(url, filename):
                         else:
                             os.remove(dst)
                     os.rename(src, dst)
+                    print(f"[PYTHON] Moved {src} -> {dst}")
                 
                 # Remove the now-empty top directory
                 os.rmdir(top_dir)
-                
+                print(f"[PYTHON] Removed temporary directory: {top_dir}")
+        
         # Clean up the tar file
         os.remove(filename)
-        print("Extraction completed successfully")
+        print("[PYTHON] Extraction completed successfully")
+        
+        # List contents to verify
+        print("[PYTHON] Current directory contents:")
+        for item in os.listdir('.'):
+            print(f"  - {item}")
+            
         return True
         
     except Exception as e:
-        print(f"Error downloading/extracting: {e}")
+        print(f"[PYTHON] Error downloading/extracting: {e}")
+        traceback.print_exc()
         return False
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: python download_repo.py <url> <filename>")
+        print("[PYTHON] Usage: python download_repo.py <url> <filename>")
         sys.exit(1)
     
     url = sys.argv[1]
     filename = sys.argv[2]
     
+    print(f"[PYTHON] Starting download process...")
+    print(f"[PYTHON] URL: {url}")
+    print(f"[PYTHON] Filename: {filename}")
+    
     success = download_and_extract(url, filename)
-    sys.exit(0 if success else 1)
+    
+    if success:
+        print("[PYTHON] Download and extraction completed successfully")
+        sys.exit(0)
+    else:
+        print("[PYTHON] Download and extraction failed")
+        sys.exit(1)
 EOF
 
 # Run the Python download script
+log "Running Python download script..."
 python3 download_repo.py "$ARCHIVE_URL" "repo.tar.gz"
 
 if [[ $? -ne 0 ]]; then
-    echo "Failed to download repository archive"
-    exit 1
+    error_exit "Failed to download repository archive"
 fi
+
+log "Repository download completed successfully"
+log "Current directory contents:"
+ls -la
 
 # Navigate to the fabric scripts directory
 FABRIC_SCRIPTS_PATH="./infra/scripts/fabric"
+log "Looking for fabric scripts directory: $FABRIC_SCRIPTS_PATH"
+
 if [[ ! -d "$FABRIC_SCRIPTS_PATH" ]]; then
-    echo "Error: Fabric scripts directory not found at: $FABRIC_SCRIPTS_PATH"
-    echo "Available directories:"
-    find . -name "fabric" -type d 2>/dev/null || echo "No 'fabric' directories found"
-    echo "Current directory contents:"
+    log "Error: Fabric scripts directory not found at: $FABRIC_SCRIPTS_PATH"
+    log "Available directories:"
+    find . -name "fabric" -type d 2>/dev/null || log "No 'fabric' directories found"
+    log "Current directory structure:"
+    find . -type d -maxdepth 3 2>/dev/null | head -20
+    log "All contents in current directory:"
     ls -la
-    exit 1
+    error_exit "Fabric scripts directory not found"
 fi
 
-cd "$FABRIC_SCRIPTS_PATH"
+cd "$FABRIC_SCRIPTS_PATH" || error_exit "Failed to change to fabric scripts directory"
+log "Successfully changed to fabric scripts directory: $(pwd)"
+log "Fabric scripts directory contents:"
+ls -la
 
 # Install Python requirements
-echo "Installing Python requirements..."
+log "Installing Python requirements..."
 if [[ -f "requirements.txt" ]]; then
+    log "Found requirements.txt, contents:"
+    cat requirements.txt
+    
     # Use pip3 if available, otherwise pip
     if command -v pip3 &> /dev/null; then
-        pip3 install -r requirements.txt
+        log "Using pip3 to install requirements..."
+        pip3 install -r requirements.txt || error_exit "Failed to install requirements with pip3"
     elif command -v pip &> /dev/null; then
-        pip install -r requirements.txt
+        log "Using pip to install requirements..."
+        pip install -r requirements.txt || error_exit "Failed to install requirements with pip"
     else
-        echo "Neither pip nor pip3 found, trying to install packages manually..."
-        # Try to install common packages that might be needed
-        python3 -m pip install requests || echo "Could not install requests"
+        log "Neither pip nor pip3 found, trying python -m pip..."
+        python3 -m pip install -r requirements.txt || error_exit "Failed to install requirements with python -m pip"
     fi
+    log "Python requirements installed successfully"
 else
-    echo "Warning: requirements.txt not found in fabric scripts directory"
+    log "Warning: requirements.txt not found in fabric scripts directory"
 fi
 
-# Make the provision script executable
+# Make the provision script executable and run it
 if [[ -f "./provision_fabric_items.sh" ]]; then
     chmod +x ./provision_fabric_items.sh
-    echo "Running bash provisioning script..."
+    log "Running bash provisioning script with parameters: -b '$BASE_URL' -c '$CAPACITY_NAME'"
     ./provision_fabric_items.sh -b "$BASE_URL" -c "$CAPACITY_NAME"
+    SCRIPT_EXIT_CODE=$?
+    
+    if [[ $SCRIPT_EXIT_CODE -ne 0 ]]; then
+        error_exit "Bash provisioning script failed with exit code: $SCRIPT_EXIT_CODE"
+    fi
+    log "Bash provisioning script completed successfully"
+    
 elif [[ -f "./provision_fabric_items.ps1" ]]; then
-    echo "Running PowerShell provisioning script..."
+    log "Running PowerShell provisioning script with parameter: -FabricCapacityName '$CAPACITY_NAME'"
     pwsh -File "./provision_fabric_items.ps1" -FabricCapacityName "$CAPACITY_NAME"
+    SCRIPT_EXIT_CODE=$?
+    
+    if [[ $SCRIPT_EXIT_CODE -ne 0 ]]; then
+        error_exit "PowerShell provisioning script failed with exit code: $SCRIPT_EXIT_CODE"
+    fi
+    log "PowerShell provisioning script completed successfully"
+    
 else
-    echo "Error: No provisioning script found (neither .ps1 nor .sh)"
-    echo "Available files in fabric scripts directory:"
+    log "Error: No provisioning script found (neither .ps1 nor .sh)"
+    log "Available files in fabric scripts directory:"
     ls -la
-    exit 1
+    error_exit "No provisioning script found"
 fi
 
-echo "Fabric deployment completed successfully!"
-echo "Azure Fabric deployment script completed."
+log "Fabric deployment completed successfully!"
+log "Azure Fabric deployment script completed successfully."
+
+# Ensure we exit with success
+exit 0

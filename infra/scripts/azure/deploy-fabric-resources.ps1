@@ -110,14 +110,34 @@ try {
     # Install Python 3 (Ubuntu 24.04 default: Python 3.12)
     Write-Host "Installing Python 3..." -ForegroundColor Yellow
     
-    # Install Python 3 and pip (much simpler approach)
-    Invoke-PackageCommand @("apt-get", "install", "-y", "python3", "python3-pip", "python3-venv") "Installing Python 3 and pip"
+    # Install Python 3, pip, venv, and additional useful packages
+    Invoke-PackageCommand @("apt-get", "install", "-y", "python3", "python3-pip", "python3-venv", "python3-dev", "build-essential", "curl") "Installing Python 3 and development tools"
     
     # Verify installation
     $pythonVersion = python3 --version 2>&1
     $pipVersion = python3 -m pip --version 2>&1
     Write-Host "Installed Python version: $pythonVersion" -ForegroundColor Green
     Write-Host "Installed pip version: $pipVersion" -ForegroundColor Green
+
+    # Install Azure CLI if not present
+    Write-Host "Checking Azure CLI installation..." -ForegroundColor Yellow
+    if (Test-Command "az") {
+        $azVersion = az --version 2>&1 | Select-String "azure-cli" | Select-Object -First 1
+        Write-Host "Azure CLI is already installed: $azVersion" -ForegroundColor Green
+    }
+    else {
+        Write-Host "Installing Azure CLI..." -ForegroundColor Yellow
+        
+        # Download and install Azure CLI
+        curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Azure CLI installation may have failed, but continuing..."
+        }
+        else {
+            $azVersion = az --version 2>&1 | Select-String "azure-cli" | Select-Object -First 1
+            Write-Host "Installed Azure CLI: $azVersion" -ForegroundColor Green
+        }
+    }
 
     # Clone repository and checkout branch
     Write-Host "Cloning repository from: $GitBaseUrl" -ForegroundColor Yellow

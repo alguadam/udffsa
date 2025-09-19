@@ -84,6 +84,7 @@ try {
     # Get script directory for relative paths
     $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
     $RequirementsPath = Join-Path $ScriptDir "requirements.txt"
+    $VenvDir = Join-Path $ScriptDir "venv"
     
     # Validate that Python is available
     Write-Host "Checking Python installation..." -ForegroundColor Yellow
@@ -93,29 +94,54 @@ try {
     }
     Write-Host "Found: $pythonVersion" -ForegroundColor Green
 
-    # Validate that pip is available
-    Write-Host "Checking pip installation..." -ForegroundColor Yellow
-    pip --version > $null 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "pip is not available. Please ensure pip is installed and try again."
+    # Create and activate Python virtual environment
+    Write-Host "Creating Python virtual environment..." -ForegroundColor Yellow
+    
+    # Remove existing virtual environment if it exists
+    if (Test-Path $VenvDir) {
+        Write-Host "Removing existing virtual environment..." -ForegroundColor Cyan
+        Remove-Item -Recurse -Force $VenvDir
     }
-    Write-Host "pip is available" -ForegroundColor Green
+    
+    # Create virtual environment
+    python -m venv "$VenvDir"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to create virtual environment. Please ensure Python venv module is available."
+    }
+    Write-Host "Virtual environment created at: $VenvDir" -ForegroundColor Green
+    
+    # Activate virtual environment
+    Write-Host "Activating virtual environment..." -ForegroundColor Yellow
+    $VenvActivate = Join-Path $VenvDir "Scripts\Activate.ps1"
+    if (-not (Test-Path $VenvActivate)) {
+        throw "Virtual environment activation script not found at: $VenvActivate"
+    }
+    & $VenvActivate
+    Write-Host "Virtual environment activated" -ForegroundColor Green
+    
+    # Upgrade pip in virtual environment
+    Write-Host "Upgrading pip in virtual environment..." -ForegroundColor Yellow
+    python -m pip install --upgrade pip --quiet
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to upgrade pip in virtual environment."
+    }
+    Write-Host "pip upgraded successfully" -ForegroundColor Green
 
-    # Install Python dependencies
+    # Install Python dependencies in virtual environment
     Write-Host "Installing Python dependencies from requirements.txt..." -ForegroundColor Yellow
     if (-not (Test-Path $RequirementsPath)) {
         throw "requirements.txt not found at: $RequirementsPath"
     }
-    pip install -r "$RequirementsPath" --quiet
+    python -m pip install -r "$RequirementsPath" --quiet
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to install Python dependencies. Please check requirements.txt and try again."
     }
-    Write-Host "Dependencies installed successfully" -ForegroundColor Green
+    Write-Host "Dependencies installed successfully in virtual environment" -ForegroundColor Green
 
     # Change to script directory for Python execution
     Push-Location $ScriptDir
 
-    # Run the Python deployment script
+    # Run the Python deployment script (using virtual environment)
     Write-Host "Starting Fabric items deployment..." -ForegroundColor Yellow
     Write-Host "This may take several minutes to complete..." -ForegroundColor Cyan
     

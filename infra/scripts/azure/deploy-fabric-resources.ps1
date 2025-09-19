@@ -170,6 +170,9 @@ try {
         # Set Python 3 environment variable for the script
         $env:PYTHON_CMD = "python3"
         
+        # Set pip flags to handle system package warnings in Azure Deployment Script environment
+        $env:PIP_BREAK_SYSTEM_PACKAGES = "1"
+        
         if ($ProvisionArgs.Count -gt 0) {
             & bash ./provision_fabric_items.sh @ProvisionArgs
         }

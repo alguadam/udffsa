@@ -198,7 +198,15 @@ if [[ ! -f "$REQUIREMENTS_PATH" ]]; then
     print_error "❌ requirements.txt not found at: $REQUIREMENTS_PATH"
     exit 1
 fi
-if ! $PIP_CMD install -r "$REQUIREMENTS_PATH" --quiet; then
+
+# Build pip install command with appropriate flags
+pip_args=("install" "-r" "$REQUIREMENTS_PATH" "--quiet")
+if [[ "${PIP_BREAK_SYSTEM_PACKAGES:-}" == "1" ]]; then
+    pip_args+=("--break-system-packages")
+    print_info "Using --break-system-packages flag for system-wide installation"
+fi
+
+if ! $PIP_CMD "${pip_args[@]}"; then
     print_error "❌ Failed to install Python dependencies. Please check requirements.txt and try again."
     exit 1
 fi

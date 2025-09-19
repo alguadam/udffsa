@@ -192,44 +192,17 @@ fi
 
 print_success "pip is available"
 
-# Create and activate Python virtual environment
-print_step "Creating Python virtual environment..."
-VENV_DIR="$SCRIPT_DIR/venv"
-
-# Remove existing virtual environment if it exists
-if [[ -d "$VENV_DIR" ]]; then
-    print_info "Removing existing virtual environment..."
-    rm -rf "$VENV_DIR"
-fi
-
-# Create virtual environment
-if ! $PYTHON_CMD -m venv "$VENV_DIR"; then
-    print_error "❌ Failed to create virtual environment. Please ensure python3-venv is installed."
-    exit 1
-fi
-print_success "Virtual environment created at: $VENV_DIR"
-
-# Activate virtual environment
-print_step "Activating virtual environment..."
-source "$VENV_DIR/bin/activate"
-print_success "Virtual environment activated"
-
-# Upgrade pip in virtual environment
-print_step "Upgrading pip in virtual environment..."
-python -m pip install --upgrade pip --quiet
-print_success "pip upgraded successfully"
-
-# Install Python dependencies in virtual environment
+# Install Python dependencies
 print_step "Installing Python dependencies from requirements.txt..."
 if [[ ! -f "$REQUIREMENTS_PATH" ]]; then
     print_error "❌ requirements.txt not found at: $REQUIREMENTS_PATH"
     exit 1
 fi
-if ! python -m pip install -r "$REQUIREMENTS_PATH" --quiet; then
+if ! $PIP_CMD install -r "$REQUIREMENTS_PATH" --quiet; then
     print_error "❌ Failed to install Python dependencies. Please check requirements.txt and try again."
     exit 1
 fi
-print_success "Dependencies installed successfully in virtual environment"
+print_success "Dependencies installed successfully"
 
 # Change to script directory for Python execution
 cd "$SCRIPT_DIR"
@@ -245,8 +218,8 @@ if [[ -n "$fabricWorkspaceName" ]]; then
     python_args+=(--workspaceName "$fabricWorkspaceName")
 fi
 
-# Run Python unbuffered so prints show immediately (using virtual environment)
-if python -u create_fabric_items.py "${python_args[@]}"; then
+# Run Python unbuffered so prints show immediately
+if $PYTHON_CMD -u create_fabric_items.py "${python_args[@]}"; then
     echo ""
     print_success "✅ Fabric deployment completed successfully!"
     echo ""
